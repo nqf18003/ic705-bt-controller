@@ -27,7 +27,7 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-15-19';
+const APP_VER = '2026-11-16-20';
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -1332,7 +1332,10 @@ function showBand() {
     btn.disabled = !on || locked;
     btn.classList.toggle('on', !!cb && Number(btn.dataset.code) === cb.code);
   });
-  // 今いるバンドの記憶 3 つ（読んであるときだけ出す）。今の周波数と同じ記憶は青い枠
+  // 今いるバンドの記憶 3 つ（読んであるときだけ出す）。ページが覚えている「使用中の記憶」（出ていくときにしまう先）だけ青い枠。
+  // 前は「今の周波数と同じ記憶」に枠を付けていたので、同じ周波数の記憶が 2 つあると枠が 2 つ、ダイヤルを回すと枠が消えた
+  // （2026-11-16 ユーザー報告「7 MHz で枠なし、144 MHz で 2 つ」）。IC-9700 の水色の枠と同じ意味にした。使用中が分からないときは枠なし
+  const use = cb ? inUse[cb.code] : null;
   const list = cb ? stacks[cb.code] : null;
   $('stackBox').hidden = !list;
   document.querySelectorAll('#stack button').forEach((btn, i) => {
@@ -1340,7 +1343,7 @@ function showBand() {
     btn.disabled = !on || locked || !e;
     btn.querySelector('.fnname').textContent = e ? (MODE_NAMES[e.mode] || '--') : '--';   // 左・中央・右の文字は出さない（2026-11-15 ユーザーの希望）
     btn.querySelector('.fnval').textContent = e ? fmtMHz(e.hz) : '--';
-    btn.classList.toggle('on', !!e && e.hz === curHz);
+    btn.classList.toggle('on', !!e && use === i);
   });
 }
 async function moveTo(hz, mode, filter, data, note) {
@@ -1459,6 +1462,7 @@ function radioBandChanged(prev, bc) {
   if (i >= 0) inUse[bc] = i; else delete stacks[bc];
   const b = BANDS.find((x) => x.code === bc);
   if (b) blog(t('blRadioBand', { v: b.name }));
+  showBand();
 }
 async function selectBand(code) {
   if (!link || locked || load.depth) return;
