@@ -61,6 +61,15 @@
       <button data-code="19" disabled>144</button>
       <button data-code="20" disabled>430</button>
     </div>
+    <!-- 今いるバンドの本体の記憶 3 つ（バンドボタンを押して読んだあとに出る） -->
+    <div id="stackBox" hidden>
+      <div class="label stacklabel" data-i18n="stackTitle"></div>
+      <div id="stack" class="fngrid three">
+        <button class="fn" disabled><span class="fnname"></span><span class="fnval">--</span></button>
+        <button class="fn" disabled><span class="fnname"></span><span class="fnval">--</span></button>
+        <button class="fn" disabled><span class="fnname"></span><span class="fnval">--</span></button>
+      </div>
+    </div>
   </section>
 
   <section class="dtx" id="secFil">
@@ -206,6 +215,9 @@
 
   <details>
     <summary data-i18n="logTitle"></summary>
+    <div class="label" data-i18n="bandLogTitle"></div>
+    <pre id="bandLog"></pre>
+    <div class="label" data-i18n="logAllTitle"></div>
     <pre id="log"></pre>
   </details>
 </main>

@@ -12,7 +12,9 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 
 ## できること
 - 周波数の表示・コピー、つまみで周波数を合わせる（本体の TS と連動）、ダイヤルロック
-- バンドの切り替え（そのバンドで最後に使った周波数・モードへ）
+- バンドの切り替え。本体がバンドごとに持つ 3 つの記憶（バンドスタッキングレジスター）を読み、バンドボタンの下に並べます。押すと、その周波数・モードへ移ります
+  （本体が最後に使った記憶がどれかは読めないので、違うときは 3 つから選んでください。記憶を読むのに 1 バンド 3 秒ほどかかります）
+  ページのボタンでバンドや記憶を移る前に、今の周波数・モードを使用中の記憶へしまいます（本体のバンドキーと同じ動き。本体の使用中の印はページから動かせないので、本体のバンドキーと混ぜて使うと、呼ばれる記憶がずれることがあります）
 - RIT・ΔTX（±500 Hz）
 - CW: スピード・キーの種類・ブレークイン
 - 送信パワー（今の出力制限も表示）
@@ -44,7 +46,8 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 
 ## データの行き先
 - 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
-- ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目。
+- ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目・1 列か 2 列か・
+  前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）。
 
 ## ご注意
 - 個人が作ったもので、Icom とは関係ありません。使うときは自己責任でお願いします。
@@ -64,7 +67,9 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
 
 ## Features
 - Frequency display and copy, tuning knob (follows the TS of the radio), dial lock
-- Band buttons (go to the last frequency and mode used on that band)
+- Band buttons. The page reads the three band stacking registers of the radio for that band and shows them under the band buttons; press one to go to that frequency and mode
+  (the radio does not tell which register was used last, so pick one of the three if needed; reading takes about 3 seconds per band)
+  Before moving to another band or register with the page, the page stores the current frequency and mode into the register in use (like the band key of the radio). The page cannot move the in-use mark of the radio, so mixing the page and the band key of the radio may recall a different register
 - RIT / ΔTX (±500 Hz)
 - CW: speed, key type, break-in
 - TX power (also shows the current power limit)
@@ -96,7 +101,8 @@ If you operate the page before the display updates, it may act on the old value.
 
 ## Where data goes
 - The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
-- Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, and which sections to show.
+- Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, which sections to show, 1 or 2 columns,
+  and the band stack frequencies read last time (to tell which register changed at the next connection).
 
 ## Notes
 - This is a personal project and is not affiliated with Icom. Use at your own risk.
