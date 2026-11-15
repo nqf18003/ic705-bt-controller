@@ -32,7 +32,7 @@ h1 { font-size: 1.1rem; margin: 0; }
 .dtxhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .dtxstate { font-size: .85rem; color: var(--accent); font-weight: 700; }
 .dtxstate.off { color: var(--warn); font-weight: 400; }
-.dtxvalue { font-family: ui-monospace, Consolas, monospace; font-size: 2rem; font-weight: 700; text-align: center; margin: 4px 0; }
+.dtxvalue { font-family: ui-monospace, Consolas, monospace; font-size: 1.3rem; font-weight: 700; text-align: right; margin: 8px 0 2px; }   /* 送信パワーの値と同じ大きさで右寄せ（2026-11-15 ユーザーの希望） */
 /* スライダー: 左側を色で塗らない（ユーザーの希望）。溝は全体を同じ色に */
 input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; background: transparent; margin: 0; }
 input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--line); }

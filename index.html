@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IC-705 Bluetooth コントローラー</title>
+<title>IC-705 Bluetooth コントローラー (for CW)</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -75,7 +75,6 @@
   <section class="dtx" id="secFil">
     <div class="row">
       <span class="label" data-i18n="filTitle"></span>
-      <span class="rowvalue"><span data-i18n="mode"></span> <span id="modeValue">--</span></span>
     </div>
     <div id="modes" class="modegrid">
       <button data-mode="0" disabled>LSB</button>
@@ -238,14 +237,12 @@
     <p data-i18n="firstNote"></p>
   </details>
 
-  <details>
+  <details id="logBox" hidden>
     <summary data-i18n="logTitle"></summary>
     <div class="label" data-i18n="bandLogTitle"></div>
     <pre id="bandLog"></pre>
     <div class="label" data-i18n="cwLogTitle"></div>
     <pre id="cwLog"></pre>
-    <div class="label" data-i18n="logAllTitle"></div>
-    <pre id="log"></pre>
   </details>
 </main>
 <script src="i18n.js"></script>

@@ -1,6 +1,6 @@
 // IC-705 Bluetooth コントローラー（2026-11-15 に「周波数読み取り」から名前を変えた）
-// Web Bluetooth（BLE）で IC-705 につなぎ、CI-V の「周波数を読む」(0x03) を送って表示する。
-// 手順は SatHunter（brills）と K7MDL2 の IC-705-BLE-Serial-Example を参考にした（実機の確認はこれから）。
+// Web Bluetooth（BLE）で IC-705 につなぎ、CI-V で周波数・RIT/ΔTX・CW・送信パワー・モード・フィルター・受信・バンドを操作する。
+// つなぐ手順は SatHunter（brills）と K7MDL2 の IC-705-BLE-Serial-Example を参考にした（実機で動作を確認済み）。
 'use strict';
 
 const SERVICE_UUID = '14cf8001-1ec2-d408-1b04-2eb270f14203';
@@ -15,14 +15,19 @@ const $ = (id) => document.getElementById(id);
 const hex = (a) => Array.from(a, (b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 調べるときだけ、すべてのやり取りを開発者ツールのコンソールに出す（アドレスの最後に ?debug を付けて開く）。
+// 「すべてのやり取り」の表示はやめた（2026-11-15 ユーザーの希望）。ふだんは 0.25 秒ごとの記録の文字も作らない（2026-11-15 見直し。電池のため）
+const DEBUG = /[?&]debug\b/.test(location.search);
+// やり取りの記録の欄（バンドの記憶・モールス文）は、公開ページでは出さない（2026-11-15 ユーザーの希望）。
+// このパソコンで試すとき（localhost）と ?debug のときだけ出す
+const SHOW_LOG = DEBUG || ['localhost', '127.0.0.1'].includes(location.hostname);
+if (SHOW_LOG) $('logBox').hidden = false;
 function log(msg) {
-  const el = $('log');
-  const t = new Date().toLocaleTimeString();
-  el.textContent = (`${t} ${msg}\n` + el.textContent).slice(0, 20000);
+  if (DEBUG) console.debug(msg);
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-15-13';
+const APP_VER = '2026-11-15-19';
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -221,15 +226,15 @@ class DemoLink {
       else reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, 0x16, 0x50, this.lock || 0, 0xFD]);
     }
   }
-  close() { clearInterval(this.timer); setTimeout(() => this.onClose(), 0); }
+  close() { setTimeout(() => this.onClose(), 0); }
 }
 
 // ---- つなぐ・読む ----
 let link = null, pollTimer = null, granted = false, lastReply = 0;
 let curHz = 0;              // 今の周波数（分かっている最新）
 let locked = false;         // ダイヤルロック
-let step = 0;               // つまみの 1目盛り（Hz）。0 = まだ決めていない
-let stepFreq = 0;           // 1目盛りを決めたとき（このページが最後に合わせたとき）の周波数
+let step = 0;               // つまみの ステップ（Hz）。0 = まだ決めていない
+let stepFreq = 0;           // ステップを決めたとき（このページが最後に合わせたとき）の周波数
 let pendingHz = 0;          // つまみで回したが、まだ送っていない周波数
 let quietUntil = 0;         // この時刻までは周波数を読まない（回した直後に表示が戻らないように）
 let pollCount = 0;
@@ -256,7 +261,7 @@ async function sendWait(bytes, note, ms = 1000, match = null) {
   return got;
 }
 const parser = new FrameParser((f) => {
-  log(t('lgRx', { hex: hex(f) }));
+  if (DEBUG) log(t('lgRx', { hex: hex(f) }));
   if (f[1] === 0xF1) {                       // つなぐときの合図の返事
     if (f[3] === 0x63) log(t(f[4] === 0x01 ? 'lgPaired' : 'lgKnown'));
     if (f[3] === 0x64) { granted = true; log(t('lgGranted')); }
@@ -279,7 +284,7 @@ const parser = new FrameParser((f) => {
       const first = !lastBandCode, prev = lastBandCode; lastBandCode = bc;
       if (!first) { radioBandChanged(prev, bc); readRx('band'); }
     }
-    if (!step) {   // つないだときに 1目盛りを選ぶ（本体の TS が分かっていればそれに合わせる）
+    if (!step) {   // つないだときに ステップを選ぶ（本体の TS が分かっていればそれに合わせる）
       setStep(radioTs || 1);
       stepFreq = curHz;
     }
@@ -346,7 +351,7 @@ let sendChain = Promise.resolve();
 function send(bytes, note) {
   const job = sendChain.then(async () => {
     if (!link) return;
-    log(t('lgTx', { hex: hex(bytes) }) + (note ? '  ' + note : ''));
+    if (DEBUG) log(t('lgTx', { hex: hex(bytes) }) + (note ? '  ' + note : ''));
     await link.write(bytes);
     if (load.depth) { load.done++; showLoading(); }
   });
@@ -456,6 +461,9 @@ async function retryRx(keys = RX_ALL) {
 async function connect(kind) {
   if (link) return;
   granted = false; lastReply = 0; pollBusy = false; load.depth = 0; curHz = 0; step = 0; pendingHz = 0; pollCount = 0; radioTs = null; dtxOn = null; ritOn = null; cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); bandMem = {}; stacks = {}; inUse = {}; lastBandCode = 0;
+  // 前の回の後片付け（受け取り途中のかけらと、返事を待っている印。2026-11-15 見直し）
+  parser.buf = [];
+  for (const w of waiters.splice(0)) { clearTimeout(w.timer); w.resolve(null); }
   link = kind === 'demo' ? new DemoLink() : new BleLink();
   $('bandLog').textContent = ''; $('cwLog').textContent = '';
   blog(t('blVer', { v: APP_VER }));
@@ -468,6 +476,7 @@ async function connect(kind) {
     await handshake();
     if (shown('secDtx')) await startDtx();   // つないだら ΔTX を ON（ずらす量は 0 Hz から）。隠しているときは本体の RIT・ΔTX にさわらない
     await readAllOnce();
+    await readCurStacks();                  // 今いるバンドの記憶 3 つだけ読んで、すぐ出す（約 3 秒）
     status('stConnected');
     const startedAt = Date.now();
     pollTimer = setInterval(() => {
@@ -494,11 +503,16 @@ function onClosed() {
 }
 function disconnect() {
   if (!link) { setButtons(false); return; }
-  const l = link;
+  const l = link, stopCw = cwBusy;
   clearInterval(pollTimer); pollTimer = null;
   link = null;
-  l.close();
   setButtons(false);
+  if (!stopCw) { l.close(); return; }
+  // モールス文を送っている途中なら、先に本体へ「止めて」（17 FF）を送ってから切る（2026-11-15 見直し。
+  // 送らずに切ると、本体はためた分を送り終わるまで電波を出し続ける）。前の書き込みが終わるのを待ち、0.8 秒で切る
+  clog(t('cwStopped'));
+  const stop = sendChain.then(() => l.write(civ(0x17, 0xFF)));
+  Promise.race([stop, sleep(800)]).catch(() => {}).finally(() => l.close());
 }
 function setButtons(connected) {
   $('connect').disabled = connected;
@@ -507,7 +521,7 @@ function setButtons(connected) {
   updateControls();
 }
 
-// ---- 1目盛り（本体の TS と連動。ユーザーの説明による本体の動き） ----
+// ---- ステップ（本体の TS と連動。ユーザーの説明による本体の動き） ----
 // 本体の周波数の表示を押すと 1 kHz の桁の上に ▼ が出て TS が ON（このユーザーの設定では 100 Hz）、
 // もう一度押すと ▼ が消えて TS が OFF（1 Hz）。ページも同じ 2 つの状態にする。
 const fmtStep = (s) => (s >= 1000 ? `${s / 1000} kHz` : `${s} Hz`);
@@ -518,7 +532,7 @@ function setStep(s) {
   tsBtn.classList.toggle('on', s > 1);
   $('stepFine').classList.toggle('on', s === 1);
 }
-// 本体の TS が変わったら、ページの 1目盛りを合わせる
+// 本体の TS が変わったら、ページの ステップを合わせる
 function followRadioTs() {
   log(t('lgTs', { v: radioTs ? t('lgTsOn', { v: fmtStep(radioTs) }) : t('lgTsOff') }));
   setStep(radioTs || 1);
@@ -634,7 +648,7 @@ function updateControls() {
   showBand();
 }
 
-// ---- 大きなつまみ（指・マウスでつまんで回す。ホイールでも可。時計回りで上がる。10° で 1目盛り） ----
+// ---- 大きなつまみ（指・マウスでつまんで回す。ホイールでも可。時計回りで上がる。10° で ステップ） ----
 class Knob {
   constructor(canvas, onTurn) {
     this.c = canvas; this.ctx = canvas.getContext('2d'); this.onTurn = onTurn;
@@ -717,8 +731,8 @@ const knob = new Knob($('knob'), (n) => {
 });
 knob.onStart = () => {
   if (!curHz) return;
-  // 外（本体のダイヤルなど）で周波数が変わっていたら、その周波数で 1目盛りを選び直す（FTDX10 版 v2.2.0 と同じ）
-  // 1目盛りは本体の TS に従う（周波数の下の桁では選ばない）
+  // 外（本体のダイヤルなど）で周波数が変わっていたら、その周波数で ステップを選び直す（FTDX10 版 v2.2.0 と同じ）
+  // ステップは本体の TS に従う（周波数の下の桁では選ばない）
   if (!step) setStep(radioTs || 1);
 };
 knob.onEnd = () => flush();   // 手を離した瞬間に送る
@@ -1018,6 +1032,9 @@ function showCwMsg() {
 // 念のため: 送っている間に押せなくした場所のクリックは、ここで止める（inert に加えて）
 document.addEventListener('click', (e) => { if (cwBusy && e.target.closest && e.target.closest('.cwdim')) { e.stopPropagation(); e.preventDefault(); } }, true);
 $('cwSend').addEventListener('click', () => cwSendText($('cwText').value));
+// 入力欄の文も覚える（localStorage の ic705bt.cwtext。この端末の中だけ。2026-11-15 ユーザーの希望）
+try { $('cwText').value = localStorage.getItem('ic705bt.cwtext') || ''; } catch (e) { /* 覚えていなくても動く */ }
+$('cwText').addEventListener('input', () => { try { localStorage.setItem('ic705bt.cwtext', $('cwText').value); } catch (e) { /* 覚えられなくても動く */ } });
 $('cwText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); cwSendText($('cwText').value); } });
 $('cwStop').addEventListener('click', () => cwStop(false));
 document.querySelectorAll('#cwPresets button').forEach((b, i) => b.addEventListener('click', () => cwSendText(cwPresets[i])));
@@ -1110,7 +1127,6 @@ function showFilter() {
   if (cwPresets) showCwMsg();   // モードが CW のときだけ文章を送れる
   const on = !!link;
   const max = widthMax(fil.mode);
-  $('modeValue').textContent = on && fil.mode != null ? (MODE_NAMES[fil.mode] || '?') : '--';
   document.querySelectorAll('#modes button').forEach((b) => {
     b.disabled = !on;
     b.classList.toggle('on', on && Number(b.dataset.mode) === fil.mode);
@@ -1322,7 +1338,7 @@ function showBand() {
   document.querySelectorAll('#stack button').forEach((btn, i) => {
     const e = list && list[i];
     btn.disabled = !on || locked || !e;
-    btn.querySelector('.fnname').textContent = t(POS[i]) + (e ? ' ' + (MODE_NAMES[e.mode] || '') : '');
+    btn.querySelector('.fnname').textContent = e ? (MODE_NAMES[e.mode] || '--') : '--';   // 左・中央・右の文字は出さない（2026-11-15 ユーザーの希望）
     btn.querySelector('.fnval').textContent = e ? fmtMHz(e.hz) : '--';
     btn.classList.toggle('on', !!e && e.hz === curHz);
   });
@@ -1363,7 +1379,8 @@ async function readBandStack(b, note, reg) {
   for (let n = 0; n < 2 && link; n++) {
     const f = await sendWait(civ(0x1A, 0x01, b.code, reg), note, STACK_WAIT);
     if (f && f[4] === 0x1A && f.length >= 17) return f;
-    if (f && f[4] === 0xFA) { stackFail = 'blNg'; break; }
+    // 「できません」（FA）は、前に送った別の命令への遅れた返事のこともあるので、すぐあきらめずに 1 回読み直す（2026-11-15 見直し）
+    if (f && f[4] === 0xFA) { stackFail = 'blNg'; await sleep(200); } else stackFail = 'blNone';
   }
   return null;
 }
@@ -1457,12 +1474,21 @@ async function selectBand(code) {
       const st = stacks[code], k = inUse[code];
       // 記憶を読んであるバンドは、ページが覚えている使用中の記憶へ移る（読まないので速い）
       if (cur !== b && st && k != null && st[k]) { const e = st[k]; say(e.hz, t('whyInUse', { p: t(POS[k]) })); await moveTo(e.hz, e.mode, e.filter, e.data, note); return; }
+      // 記憶をまだ読んでいないバンドは、必ず読む（2026-11-15 ユーザー報告「144 MHz だけ記憶 3 つが出ない」。
+      // 前は、つないでいる間に本体のキーなどで行ったバンドは、読まずにページが覚えている最後の周波数へ移っていたので、記憶のボタンが出なかった）
       const m = bandMem[code];
-      // つないでいる間に使ったバンドは、ページが覚えている最後の周波数へ戻る（読まないので速い）
-      if (m && cur !== b) { say(m.hz, t('whySeen')); await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return; }
+      // 記憶は読んであるが使用中が分からないバンドは、読み直さずに最後の周波数へ（速い）
+      if (cur !== b && st && m) { say(m.hz, t('whySeen')); await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return; }
       const prevUse = inUse[code];
       const r = await loadStacks(b);
       if (!link) return;
+      // つないでいる間に使ったバンドは、ページが覚えている最後の周波数へ戻る。その周波数と同じ記憶があれば、それを使用中にする
+      // （本体のキーで出たなら、本体はそこへしまっている）。無ければ使用中は分からないので、どこにも書かない
+      if (m && cur !== b) {
+        const i = r ? stacks[code].findIndex((e) => e && e.hz === m.hz) : -1;
+        if (i >= 0) { inUse[code] = i; saveSnap(code, stacks[code], i); } else delete inUse[code];
+        say(m.hz, t('whySeen')); await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return;
+      }
       // 今いるバンドのボタンは、記憶を読み直して下に並べるだけ（移らない）
       if (cur === b) {
         const i = r ? stacks[code].findIndex((e) => e && e.hz === curHz) : -1;
@@ -1478,6 +1504,24 @@ async function selectBand(code) {
         await moveTo(e.hz, e.mode, e.filter, e.data, note);
       } else { say(b.hz, t('whyDefault')); await moveTo(b.hz, null, null, null, note); }
     } catch (e) { log(t('lgSendFail', { msg: e.message })); }
+  });
+}
+// つないだ直後に、今いるバンドの記憶 3 つを読んで Band Stacking Register を出す（2026-11-15 ユーザーの希望。
+// 前はバンドボタンを押すまで出なかった）。今の周波数と同じ記憶があればそれを使用中にする（無ければ分からないので書かない）
+async function readCurStacks() {
+  if (!link || !shown('secBand')) return;
+  // 周波数がまだ分からなければ読む（実機では、前の命令の遅れた返事などで 1 回では分からないことがあった。2026-11-15）。
+  // 周波数の返事（03）だけを待ち、3 回まで読み直す
+  for (let n = 0; n < 3 && !curHz && link; n++) await sendWait(civ(0x03), null, 1500, (f) => f[4] === 0x03);
+  const b = curBand();
+  if (!b) blog(t('blNoBand', { f: curHz ? fmtMHz(curHz) : '?' }));
+  if (!b || !link) return;
+  await withLoading(null, async () => {
+    const r = await loadStacks(b);
+    if (!link) return;
+    const i = r ? stacks[b.code].findIndex((e) => e && e.hz === curHz) : -1;
+    if (i >= 0) { inUse[b.code] = i; saveSnap(b.code, stacks[b.code], i); } else delete inUse[b.code];
+    showBand();
   });
 }
 // 記憶を選ぶボタン（左・中央・右）: 今いるバンドの、その記憶の周波数・モードへ移る

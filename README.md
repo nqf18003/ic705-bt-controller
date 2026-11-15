@@ -1,8 +1,8 @@
-# IC-705 Bluetooth コントローラー
+# IC-705 Bluetooth コントローラー (for CW)
 
 **▶ 使う（公開ページ）: https://nqf18003.github.io/ic705-bt-controller/**
 
-[English is below](#ic-705-bluetooth-controller)
+[English is below](#ic-705-bluetooth-controller-for-cw)
 
 Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作するシンプルなウェブページです。インストールは要りません。
 
@@ -49,7 +49,7 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 ## データの行き先
 - 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
 - ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目・1 列か 2 列か・
-  前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）・CW の定型文。
+  前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）・CW の定型文と入力欄の文。
 
 ## ご注意
 - 個人が作ったもので、Icom とは関係ありません。使うときは自己責任でお願いします。
@@ -57,7 +57,7 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 
 ---
 
-# IC-705 Bluetooth Controller
+# IC-705 Bluetooth Controller (for CW)
 
 **▶ Open the page: https://nqf18003.github.io/ic705-bt-controller/**
 
@@ -106,7 +106,7 @@ If you operate the page before the display updates, it may act on the old value.
 ## Where data goes
 - The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
 - Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, which sections to show, 1 or 2 columns,
-  the band stack frequencies read last time (to tell which register changed at the next connection), and the CW presets.
+  the band stack frequencies read last time (to tell which register changed at the next connection), and the CW presets and message.
 
 ## Notes
 - This is a personal project and is not affiliated with Icom. Use at your own risk.
