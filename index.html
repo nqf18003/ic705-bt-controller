@@ -99,6 +99,18 @@
     <input id="filWidth" type="range" min="0" max="40" step="1" value="9" disabled data-i18n-aria="filWidth">
     <div class="dtxscale"><span id="filMin">50 Hz</span><span id="filMax">3.6 kHz</span></div>
   </section>
+
+  <!-- 受信はモード・フィルターの下（2026-11-15 ユーザーの希望） -->
+  <section class="dtx" id="secRx">
+    <div class="label" data-i18n="rxTitle"></div>
+    <!-- 本体の FUNCTION 画面のような四角いボタン。押すたびに切り替わる（本体と同じ） -->
+    <div class="fngrid">
+      <button id="fnPamp" class="fn" disabled><span class="fnname">P.AMP</span><span id="fnPampVal" class="fnval">--</span></button>
+      <button id="fnNotch" class="fn" disabled><span class="fnname">NOTCH</span><span id="fnNotchVal" class="fnval">--</span></button>
+      <button id="fnNb" class="fn" disabled><span class="fnname">NB</span><span id="fnNbVal" class="fnval">--</span></button>
+      <button id="fnNr" class="fn" disabled><span class="fnname">NR</span><span id="fnNrVal" class="fnval">--</span></button>
+    </div>
+  </section>
   </div>
 
   <div class="col">
@@ -191,17 +203,6 @@
       <span id="maxpwrValue" class="rowvalue">--</span>
     </div>
     <div id="powerSrc" class="powerinfo"></div>
-  </section>
-
-  <section class="dtx" id="secRx">
-    <div class="label" data-i18n="rxTitle"></div>
-    <!-- 本体の FUNCTION 画面のような四角いボタン。押すたびに切り替わる（本体と同じ） -->
-    <div class="fngrid">
-      <button id="fnPamp" class="fn" disabled><span class="fnname">P.AMP</span><span id="fnPampVal" class="fnval">--</span></button>
-      <button id="fnNotch" class="fn" disabled><span class="fnname">NOTCH</span><span id="fnNotchVal" class="fnval">--</span></button>
-      <button id="fnNb" class="fn" disabled><span class="fnname">NB</span><span id="fnNbVal" class="fnval">--</span></button>
-      <button id="fnNr" class="fn" disabled><span class="fnname">NR</span><span id="fnNrVal" class="fnval">--</span></button>
-    </div>
   </section>
   </div>
   </div>
