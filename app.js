@@ -220,22 +220,17 @@ let tsOnCode = 0x01;        // TS を ON にしたときの幅（本体から読
 // 本体の TS の値（CI-V 10 の 00〜13）→ Hz
 const TS_TABLE = [0, 100, 500, 1000, 5000, 6250, 8330, 9000, 10000, 12500, 20000, 25000, 50000, 100000];
 
-// 特定の返事を待つ（バンドスタッキングレジスターの読み書きで使う）。ms 待っても来なければ null
+// 返事を待っているもの（sendWait が使う）
 const waiters = [];
-function waitFrame(match, ms) {
-  return new Promise((resolve) => {
-    const w = { match, resolve, timer: setTimeout(() => { waiters.splice(waiters.indexOf(w), 1); resolve(null); }, ms) };
-    waiters.push(w);
-  });
-}
 // 読む命令を送り、その返事（同じ命令・番号で始まるもの。「できません」FA でもよい）が届くまで待つ（2026-11-15 ユーザーの希望）。
 // まとめ読みで、帯が消えたときには全部の値がそろっているようにするため。返事が無くても、送り終えてから ms（1 秒）で次へ進む（止まらないように）。
 // 返事が送り終える前に届くこともあるので、待つ準備は送る前にする。
-async function sendWait(bytes, note, ms = 1000) {
+// match を渡すと、その条件に合う返事を待つ（書き込みの返事 FB を待つときなど）。
+async function sendWait(bytes, note, ms = 1000, match = null) {
   const body = bytes.slice(4, -1);
   let w;
   const got = new Promise((resolve) => {
-    w = { match: (f) => f[4] === 0xFA || body.every((b, i) => f[4 + i] === b), resolve, timer: null };
+    w = { match: match || ((f) => f[4] === 0xFA || body.every((b, i) => f[4 + i] === b)), resolve, timer: null };
     waiters.push(w);
   });
   try { await send(bytes, note); } catch (e) { log(t('lgSendFail', { msg: e.message })); }
@@ -395,10 +390,11 @@ async function readAllOnce() {
   const first = (c) => c[4] === 0x04 || (c[4] === 0x16 && RX_KEY[c[5]]);
   const all = [...slow, ...turn];
   const head = all.filter(first).sort((x, y) => (y[4] === 0x04) - (x[4] === 0x04)), rest = all.filter((c) => !first(c));
-  await withLoading(head.length + rest.length, async () => {
+  await withLoading(head.length + rest.length + (shown('secBand') ? BANDS.length : 0), async () => {
     for (const c of head) { if (!link) return; await sendWait(c); }
     await retryRx();                        // 受信で返事が来なかったものは、ここですぐ読み直す
     for (const c of rest) { if (!link) return; await sendWait(c); }
+    await preloadBands();                   // 全バンドの本体の記憶（バンドスタッキングレジスター）を取り込む
   });
 }
 // 受信の 4 つ（P.AMP・NB・NR・ノッチ）を読み直す。バンドやモードが変わったとき（本体はバンドごとに設定を持つことがあるため）
@@ -1188,19 +1184,40 @@ async function moveTo(hz, mode, filter, data, note) {
 // 残り（データモード・トーンなど）は読んだまま 1A 01 <バンド> 01 <内容> で書く（CI-V Reference Guide p.18）。
 async function saveBandStack(b) {
   if (!b || !curHz) return;
-  const want = (f) => f[4] === 0x1A && f[5] === 0x01 && f[6] === b.code && f[7] === 0x01;
-  const got = waitFrame(want, 1000);
-  await send(civ(0x1A, 0x01, b.code, 0x01), t('nBandSaveRead', { v: b.name }));
-  const f = await got;
-  if (!f || f.length < 17) { log(t('lgBandSaveFail', { v: b.name })); return; }
+  const f = await readBandStack(b, t('nBandSaveRead', { v: b.name }));
+  if (!f) { log(t('lgBandSaveFail', { v: b.name })); return; }
   const body = f.slice(8, f.length - 1);
   body.splice(0, 5, ...hzToBcd(curHz));
   if (fil.mode != null) body[5] = fil.mode;
   if (fil.fil != null) body[6] = fil.fil;
-  const ack = waitFrame((r) => r[4] === 0xFB || r[4] === 0xFA, 1000);
-  await send(civ(0x1A, 0x01, b.code, 0x01, ...body), t('nBandSave', { v: b.name, f: (curHz / 1e6).toFixed(6) }));
-  const r = await ack;
+  const r = await sendWait(civ(0x1A, 0x01, b.code, 0x01, ...body), t('nBandSave', { v: b.name, f: (curHz / 1e6).toFixed(6) }),
+    1000, (x) => x[4] === 0xFB || x[4] === 0xFA);
   if (!r || r[4] !== 0xFB) log(t('lgBandSaveFail', { v: b.name }));
+}
+// 本体の記憶（バンドスタッキングレジスター 01）を読む。読めなければ null。
+// 2026-11-15 ユーザー報告「新しくつないだ機器だと、バンドを移るときりのよい周波数（ページの決めた周波数）になる」の対策:
+// 前は「送り始めてから 1 秒」で数えていたので、書き込みの遅い機器では返事の前に時間切れになっていたと考えられる。
+// 今は送り終えてから 1 秒待ち、返事が無ければ 2 回まで読み直す（「できません」FA が 2 回続いたらあきらめる）。
+async function readBandStack(b, note) {
+  let ng = 0;
+  for (let n = 0; n < 3 && link; n++) {
+    const f = await sendWait(civ(0x1A, 0x01, b.code, 0x01), note);
+    if (f && f[4] === 0x1A && f.length >= 17) return f;
+    if (f && f[4] === 0xFA && ++ng >= 2) break;
+  }
+  return null;
+}
+// つないだ直後に、全バンドの本体の記憶を取り込んでおく（2026-11-15 ユーザーの案）。バンドボタンを押したときは、ここで覚えたものへ移る。
+// つないでいる間に周波数やモードが変わったバンドは、rememberBand が新しいものに書きかえる。
+async function preloadBands() {
+  if (!shown('secBand')) return;
+  for (const b of BANDS) {
+    if (!link) return;
+    const f = await readBandStack(b, t('nBandPre', { v: b.name }));
+    const hz = f ? bcdToHz(f.slice(8, 13)) : 0;
+    if (!f) log(t('lgBandReadFail', { v: b.name }));
+    else if (hz >= b.lo && hz <= b.hi && !bandMem[b.code]) bandMem[b.code] = { hz, mode: f[13], filter: f[14], data: f[15] };
+  }
 }
 async function selectBand(code) {
   if (!link || locked || load.depth) return;
@@ -1213,12 +1230,11 @@ async function selectBand(code) {
       if (!link) return;
       const m = bandMem[code];
       const note = t('nBand', { v: b.name });
-      if (m && cur !== b) { await moveTo(m.hz, m.mode, m.filter, 0x00, note); return; }
-      // 覚えていないバンドは本体のレジスターを読む。1 秒たっても返事が無い・バンドの外なら、決まった周波数へ
-      const got = waitFrame((f) => f[4] === 0x1A && f[5] === 0x01 && f[6] === code && f.length >= 17, 1000);
-      await send(civ(0x1A, 0x01, code, 0x01), t('nBandRead', { v: b.name }));
-      const f = await got;
+      if (m && cur !== b) { await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return; }
+      // 覚えていないバンド（つないだ直後に取り込めなかったバンド）は本体のレジスターを読む。読めない・バンドの外なら、決まった周波数へ
+      const f = await readBandStack(b, t('nBandRead', { v: b.name }));
       const hz = f ? bcdToHz(f.slice(8, 13)) : 0;
+      if (!f) log(t('lgBandReadFail', { v: b.name }));
       if (f && hz >= b.lo && hz <= b.hi) await moveTo(hz, f[13], f[14], f[15], note);
       else await moveTo(b.hz, null, null, null, note);
     } catch (e) { log(t('lgSendFail', { msg: e.message })); }

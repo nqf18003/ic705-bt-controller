@@ -137,6 +137,8 @@ const TEXTS = {
   nBandSave:    ['({v} MHz 帯の本体の記憶を {f} MHz に書き直す)', '(update radio band stack for {v} MHz to {f} MHz)'],
   lgBandSaveFail: ['{v} MHz 帯の本体の記憶を書き直せませんでした', 'Could not update the radio band stack for {v} MHz'],
   nBand:        ['({v} MHz 帯へ)', '(to {v} MHz band)'],
+  nBandPre:     ['({v} MHz 帯の本体の記憶を取り込む)', '(load radio band stack for {v} MHz)'],
+  lgBandReadFail: ['{v} MHz 帯の本体の記憶を読めませんでした', 'Could not read the radio band stack for {v} MHz'],
   nBandRead:    ['({v} MHz 帯で最後に使った周波数を読む)', '(read last frequency on {v} MHz band)'],
   nMode:        ['(モード {v})', '(mode {v})'],
   nWidth:       ['(帯域幅 {v})', '(width {v})'],
