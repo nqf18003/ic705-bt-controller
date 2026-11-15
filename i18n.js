@@ -68,6 +68,9 @@ const TEXTS = {
                  'Do not pair from the Bluetooth settings of your phone or PC (this page connects directly).'],
   logTitle:     ['やり取りの記録', 'Communication log'],
   langButton:   ['English', '日本語'],
+  // 列の切り替えボタン（押すと切り替わる先を書く。言語のボタンと同じ考え方）
+  cols1Button:  ['1 列にする', '1 column'],
+  cols2Button:  ['2 列にする', '2 columns'],
 
   // お知らせ（一番下の行）
   stHello:      ['「つなぐ」を押して、一覧から「ICOM BT(IC-705)」を選んでください。', 'Press "Connect" and choose "ICOM BT(IC-705)" from the list.'],

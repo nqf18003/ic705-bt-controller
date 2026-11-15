@@ -10,9 +10,15 @@
 <main>
   <div class="top">
     <h1 data-i18n="title"></h1>
-    <button id="lang" class="langbtn" data-i18n="langButton"></button>
+    <div class="topbtns">
+      <button id="colsBtn" class="langbtn"></button>
+      <button id="lang" class="langbtn" data-i18n="langButton"></button>
+    </div>
   </div>
 
+  <!-- 広い画面（パソコン・タブレットの横向き）では 2 列。せまい画面では枠を無いものとして 1 列に並べる（順番は style.css の order） -->
+  <div class="cols">
+  <div class="col">
   <div id="freq" class="freq">--.---.---</div>
   <div class="unitrow">
     <span id="unit" class="unit">MHz</span>
@@ -57,6 +63,36 @@
     </div>
   </section>
 
+  <section class="dtx" id="secFil">
+    <div class="row">
+      <span class="label" data-i18n="filTitle"></span>
+      <span class="rowvalue"><span data-i18n="mode"></span> <span id="modeValue">--</span></span>
+    </div>
+    <div id="modes" class="modegrid">
+      <button data-mode="0" disabled>LSB</button>
+      <button data-mode="1" disabled>USB</button>
+      <button data-mode="3" disabled>CW</button>
+      <button data-mode="7" disabled>CW-R</button>
+      <button data-mode="4" disabled>RTTY</button>
+      <button data-mode="2" disabled>AM</button>
+      <button data-mode="5" disabled>FM</button>
+      <button data-mode="23" disabled>DV</button>
+    </div>
+    <div id="fil" class="seg">
+      <button data-fil="1" disabled>FIL1</button>
+      <button data-fil="2" disabled>FIL2</button>
+      <button data-fil="3" disabled>FIL3</button>
+    </div>
+    <div class="row">
+      <span class="rowname" data-i18n="filWidth"></span>
+      <span id="filWidthValue" class="rowvalue">--</span>
+    </div>
+    <input id="filWidth" type="range" min="0" max="40" step="1" value="9" disabled data-i18n-aria="filWidth">
+    <div class="dtxscale"><span id="filMin">50 Hz</span><span id="filMax">3.6 kHz</span></div>
+  </section>
+  </div>
+
+  <div class="col">
   <section class="dtx" id="secDtx">
     <div class="dtxhead">
       <span class="label" data-i18n="dtxTitle"></span>
@@ -124,34 +160,6 @@
     <div id="powerSrc" class="powerinfo"></div>
   </section>
 
-  <section class="dtx" id="secFil">
-    <div class="row">
-      <span class="label" data-i18n="filTitle"></span>
-      <span class="rowvalue"><span data-i18n="mode"></span> <span id="modeValue">--</span></span>
-    </div>
-    <div id="modes" class="modegrid">
-      <button data-mode="0" disabled>LSB</button>
-      <button data-mode="1" disabled>USB</button>
-      <button data-mode="3" disabled>CW</button>
-      <button data-mode="7" disabled>CW-R</button>
-      <button data-mode="4" disabled>RTTY</button>
-      <button data-mode="2" disabled>AM</button>
-      <button data-mode="5" disabled>FM</button>
-      <button data-mode="23" disabled>DV</button>
-    </div>
-    <div id="fil" class="seg">
-      <button data-fil="1" disabled>FIL1</button>
-      <button data-fil="2" disabled>FIL2</button>
-      <button data-fil="3" disabled>FIL3</button>
-    </div>
-    <div class="row">
-      <span class="rowname" data-i18n="filWidth"></span>
-      <span id="filWidthValue" class="rowvalue">--</span>
-    </div>
-    <input id="filWidth" type="range" min="0" max="40" step="1" value="9" disabled data-i18n-aria="filWidth">
-    <div class="dtxscale"><span id="filMin">50 Hz</span><span id="filMax">3.6 kHz</span></div>
-  </section>
-
   <section class="dtx" id="secRx">
     <div class="label" data-i18n="rxTitle"></div>
     <!-- 本体の FUNCTION 画面のような四角いボタン。押すたびに切り替わる（本体と同じ） -->
@@ -162,6 +170,8 @@
       <button id="fnNr" class="fn" disabled><span class="fnname">NR</span><span id="fnNrVal" class="fnval">--</span></button>
     </div>
   </section>
+  </div>
+  </div>
 
   <div class="buttons">
     <button id="connect" data-i18n="connect"></button>

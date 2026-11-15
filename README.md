@@ -19,6 +19,7 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 - モード・フィルター（FIL1〜3・帯域幅）
 - 受信: P.AMP・NOTCH・NB・NR
 - 日本語・英語の切り替え、表示する項目の選択
+- 広い画面（パソコン・タブレット・スマホの横向き）では 2 列に並べられます（右上のボタンで 1 列・2 列を切り替え）
 
 ## はじめてつなぐとき
 1. IC-705 の MENU → SET → Bluetooth設定 → Bluetooth を ON にする。
@@ -28,6 +29,8 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 
 - スマホやパソコンの「設定」の Bluetooth からはペアリングしないでください（このページが直接つなぎます）。
 - 本体の CI-V アドレスは初期値の A4 のままにしてください（MENU → SET → 外部端子 → CI-V → CI-V アドレス）。
+- IC-705 がペアリングを覚えられる Bluetooth LE の機器は 2 台までです（本体の仕様。このページも Bluetooth LE でつなぎます）。
+  3 台目がつながらないときは、本体の MENU → SET → Bluetooth設定 → ペアリング/接続 で、使わない機器を削除してからやり直してください。
 - 「デモ」ボタンで、無線機が無くても画面を試せます。
 
 ## 本体で設定を変えたときは、少し待ってから操作してください
@@ -68,6 +71,7 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
 - Mode and filter (FIL1-3, width)
 - Receive: P.AMP, NOTCH, NB, NR
 - Japanese / English, choose which sections to show
+- Two-column layout on wide screens (PC, tablet, phone in landscape); switch 1 / 2 columns with the button at the top right
 
 ## First connection
 1. On the IC-705: MENU → SET → Bluetooth Set → turn Bluetooth ON.
@@ -77,6 +81,8 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
 
 - Do not pair from the Bluetooth settings of your phone or PC (this page connects directly).
 - Keep the CI-V address of the radio at the default A4 (MENU → SET → Connectors → CI-V → CI-V Address).
+- The IC-705 can keep only 2 Bluetooth LE devices paired (a limit of the radio; this page uses Bluetooth LE).
+  If a third device cannot connect, delete an unused device in MENU → SET → Bluetooth Set → Pairing/Connect, then try again.
 - The "Demo" button lets you try the page without a radio.
 
 ## After changing a setting on the radio, wait a moment

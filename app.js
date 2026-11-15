@@ -1251,9 +1251,31 @@ $('connect').addEventListener('click', () => connect('ble'));
 $('demo').addEventListener('click', () => connect('demo'));
 $('disconnect').addEventListener('click', () => { disconnect(); status('stDisconnected'); });
 updateControls();
+// ---- 1 列・2 列の切り替え（2026-11-15 ユーザーの希望。右上、言語のボタンの隣） ----
+// 選んだほうを localStorage（ic705bt.cols に '1' か '2'）に覚える。まだ選んでいなければ、画面の幅が 900 px 以上のとき 2 列。
+let colsPref = null;
+try { const v = localStorage.getItem('ic705bt.cols'); if (v === '1' || v === '2') colsPref = v; } catch (e) { /* 覚えていなくても動く */ }
+const wideScreen = window.matchMedia('(min-width: 900px)');
+// 幅 600 px 未満（スマホの縦向き）は 2 列にすると欄が重なって使えないので、いつも 1 列にしてボタンも出さない。
+const narrowScreen = window.matchMedia('(max-width: 599px)');
+const twoCols = () => !narrowScreen.matches && (colsPref ? colsPref === '2' : wideScreen.matches);
+function applyCols() {
+  document.body.classList.toggle('cols2', twoCols());
+  $('colsBtn').hidden = narrowScreen.matches;
+  $('colsBtn').textContent = t(twoCols() ? 'cols1Button' : 'cols2Button');
+}
+$('colsBtn').addEventListener('click', () => {
+  colsPref = twoCols() ? '1' : '2';
+  try { localStorage.setItem('ic705bt.cols', colsPref); } catch (e) { /* 無視 */ }
+  applyCols();
+});
+wideScreen.addEventListener('change', applyCols);
+narrowScreen.addEventListener('change', applyCols);
+
 // 日本語・英語の切り替え（このページだけ。本体の言語設定は変えない）
 function renderLang() {
   applyTexts();
+  applyCols();
   $('status').textContent = t(lastStatus[0], lastStatus[1]);
   updateControls();
 }
