@@ -30,6 +30,15 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 - 本体の CI-V アドレスは初期値の A4 のままにしてください（MENU → SET → 外部端子 → CI-V → CI-V アドレス）。
 - 「デモ」ボタンで、無線機が無くても画面を試せます。
 
+## 本体で設定を変えたときは、少し待ってから操作してください
+このページは本体の状態を順番に読みに行っているので、**本体のつまみやボタンで変えた設定が、ページの表示に出るまで少し時間がかかります**。
+表示が変わる前にページで続けて操作すると、古い値のまま動くことがあります。本体で変えたら、ページの表示が変わるのを待ってから操作してください。
+- 周波数・RIT/ΔTX のずらす量: すぐ（約 0.25 秒）
+- モード・CW スピード・送信パワー・帯域幅: 約 1 秒
+- ロック・1目盛り（TS）・RIT/ΔTX の ON/OFF・ブレークイン・キーの種類・P.AMP・NOTCH・NB・NR など: 数秒（目安 4〜5 秒）
+- 「表示する項目」で使わない欄を隠すと、読むものが減って少し速くなります。
+- ページのボタンで変えたときは、ページの表示がすぐ変わります（本体へもすぐ送ります）。
+
 ## データの行き先
 - 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
 - ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目。
@@ -69,6 +78,15 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
 - Do not pair from the Bluetooth settings of your phone or PC (this page connects directly).
 - Keep the CI-V address of the radio at the default A4 (MENU → SET → Connectors → CI-V → CI-V Address).
 - The "Demo" button lets you try the page without a radio.
+
+## After changing a setting on the radio, wait a moment
+This page reads the state of the radio one item at a time, so **a change made with the knobs or buttons of the radio takes a little time to appear on the page**.
+If you operate the page before the display updates, it may act on the old value. After changing something on the radio, wait until the page shows it.
+- Frequency, RIT/ΔTX offset: almost at once (about 0.25 s)
+- Mode, CW speed, TX power, width: about 1 s
+- Lock, step (TS), RIT/ΔTX on/off, break-in, key type, P.AMP, NOTCH, NB, NR, etc.: a few seconds (about 4-5 s)
+- Hiding unused sections in "Sections to show" reduces the reading and makes it a little faster.
+- When you change something with the buttons of the page, the page updates at once (and sends it to the radio at once).
 
 ## Where data goes
 - The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
