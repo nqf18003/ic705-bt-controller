@@ -121,6 +121,10 @@ pre { font-size: .75rem; max-height: 240px; overflow: auto; white-space: pre-wra
 #cwPresets .fnval { font-size: .85rem; font-family: ui-monospace, Consolas, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cwedit { margin-top: 8px; }
 .cwdim { opacity: .4; transition: opacity .2s; }   /* CW の文章を送っている間は押せない */
+/* 送っている間の「止める」は赤く目立たせる（2026-11-15 ユーザーの希望） */
+#cwStop.danger { background: #d62f2f; border-color: #d62f2f; color: #fff; font-weight: 700; animation: cwpulse 1.2s ease-in-out infinite; }
+@keyframes cwpulse { 50% { box-shadow: 0 0 0 4px rgba(214, 47, 47, .35); } }
+@media (prefers-reduced-motion: reduce) { #cwStop.danger { animation: none; } }
 .cwp { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--sub); }
 .cwp input { margin-top: 4px; }
 #stack .fnval { font-size: .85rem; font-family: ui-monospace, Consolas, monospace; }

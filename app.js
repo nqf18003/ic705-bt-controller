@@ -22,7 +22,7 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-15-11';
+const APP_VER = '2026-11-15-12';
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -1002,6 +1002,7 @@ function showCwMsg() {
   document.querySelectorAll('.cwp input').forEach((el) => { el.disabled = cwBusy; });
   $('cwSend').disabled = !ok;
   $('cwStop').disabled = !on || !cwBusy;
+  $('cwStop').classList.toggle('danger', on && cwBusy);
   document.querySelectorAll('#cwPresets button').forEach((b, i) => {
     b.disabled = !ok || !cwClean(cwPresets[i]);
     b.querySelector('.fnval').textContent = cwClean(cwPresets[i]) || '--';
