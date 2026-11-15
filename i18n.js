@@ -130,6 +130,29 @@ const TEXTS = {
   nWpm:         ['(CW スピード {v} WPM)', '(CW speed {v} WPM)'],
   nPwr:         ['(送信パワー {v} %)', '(RF power {v} %)'],
   nKey:         ['(キーの種類 {v})', '(key type {v})'],
+  cwMsg:        ['モールスの文章を送る', 'Send a CW message'],
+  cwPh:         ['例: CQ CQ DE ...', 'e.g. CQ CQ DE ...'],
+  cwSend:       ['送る', 'Send'],
+  cwStop:       ['止める', 'Stop'],
+  cwPresets:    ['定型文（押すとすぐ送ります）', 'Presets (press to send at once)'],
+  cwEdit:       ['定型文を変える', 'Edit presets'],
+  cwNote:       ['本当に電波が出ます。速さは上の CW スピードです。使える文字は英字・数字・空白と / ? . - , : ( ) = + @ など。^ の後ろの 2 文字は続けて送ります（例 ^AR）。定型文はこの端末のブラウザーにだけ覚えます。',
+                 'This really transmits. The speed is the CW speed above. Letters, digits, space and / ? . - , : ( ) = + @ can be sent. Two characters after ^ are sent joined (e.g. ^AR). Presets are stored only in this browser.'],
+  cwSending:    ['送信中: {v}', 'Sending: {v}'],
+  cwDone:       ['送り終わりました', 'Done'],
+  cwDoneBkOff:  ['送り終わりました（ブレークイン OFF なので、サイドトーンだけで電波は出ていません）', 'Done (break-in is OFF, so only the sidetone was heard and nothing was transmitted)'],
+  cwBkOff:      ['ブレークインが OFF なので、送ってもサイドトーンだけで電波は出ません（練習用。送信するときは SEMI か FULL に）', 'Break-in is OFF, so only the sidetone is heard and nothing is transmitted (for practice; choose SEMI or FULL to transmit)'],
+  cwStopped:    ['止めました', 'Stopped'],
+  cwNg:         ['本体が受け付けませんでした（モードが CW か確かめてください）', 'The radio refused (check that the mode is CW)'],
+  cwEmpty:      ['送れる文字がありません', 'Nothing that can be sent'],
+  cwNotCw:      ['モードが CW か CW-R のときに送れます', 'Available when the mode is CW or CW-R'],
+  cwLogTitle:   ['CW の文章の記録（調べる用。つなぐたびに消えます）', 'CW message log (for troubleshooting; cleared on each connection)'],
+  clText:       ['文章: {v}（{w} WPM）', 'Message: {v} ({w} WPM)'],
+  clWord:       ['送った「{v}」→ 返事 {r}（{ms} ms、本体にためた残り {left} 秒）', 'sent "{v}" -> reply {r} ({ms} ms, {left} s still queued)'],
+  clNg:         ['できません（FA）', 'refused (FA)'],
+  clEnd:        ['送り終わりの予定時刻', 'expected end of sending'],
+  nCwMsg:       ['(CW の文章 {v})', '(CW message {v})'],
+  nCwStop:      ['(CW の文章を止める)', '(stop CW message)'],
   nBk:          ['(ブレークイン {v})', '(break-in {v})'],
   nFil:         ['(フィルター FIL{v})', '(filter FIL{v})'],
   nPbtCenter:   ['(SHIFT〔PBT〕を 0 に)', '(SHIFT [PBT] to 0)'],
@@ -178,4 +201,5 @@ function applyTexts() {
   document.title = t('title');
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
 }

@@ -17,6 +17,8 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
   ページのボタンでバンドや記憶を移る前に、今の周波数・モードを使用中の記憶へしまいます（本体のバンドキーと同じ動き。本体の使用中の印はページから動かせないので、本体のバンドキーと混ぜて使うと、呼ばれる記憶がずれることがあります）
 - RIT・ΔTX（±500 Hz）
 - CW: スピード・キーの種類・ブレークイン
+- モールスの文章を送る: 入力欄の文と、定型文 4 つ（M1〜M4。押すとすぐ送る）。本体のキーヤーが送信します（モードが CW・CW-R のとき。本当に電波が出ます。
+  ブレークインが OFF のときは、本体の仕様でサイドトーンだけになり、電波は出ません）
 - 送信パワー（今の出力制限も表示）
 - モード・フィルター（FIL1〜3・帯域幅）
 - 受信: P.AMP・NOTCH・NB・NR
@@ -47,7 +49,7 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 ## データの行き先
 - 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
 - ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目・1 列か 2 列か・
-  前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）。
+  前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）・CW の定型文。
 
 ## ご注意
 - 個人が作ったもので、Icom とは関係ありません。使うときは自己責任でお願いします。
@@ -72,6 +74,8 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
   Before moving to another band or register with the page, the page stores the current frequency and mode into the register in use (like the band key of the radio). The page cannot move the in-use mark of the radio, so mixing the page and the band key of the radio may recall a different register
 - RIT / ΔTX (±500 Hz)
 - CW: speed, key type, break-in
+- Send CW messages: type a message, or use 4 presets (M1-M4, sent at once). The keyer of the radio transmits it (in CW / CW-R mode; this really transmits.
+  With break-in OFF the radio only plays the sidetone and does not transmit)
 - TX power (also shows the current power limit)
 - Mode and filter (FIL1-3, width)
 - Receive: P.AMP, NOTCH, NB, NR
@@ -102,7 +106,7 @@ If you operate the page before the display updates, it may act on the old value.
 ## Where data goes
 - The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
 - Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, which sections to show, 1 or 2 columns,
-  and the band stack frequencies read last time (to tell which register changed at the next connection).
+  the band stack frequencies read last time (to tell which register changed at the next connection), and the CW presets.
 
 ## Notes
 - This is a personal project and is not affiliated with Icom. Use at your own risk.

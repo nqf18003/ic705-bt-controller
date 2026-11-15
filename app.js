@@ -22,13 +22,20 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-15-7';
+const APP_VER = '2026-11-15-11';
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
   el.textContent = (el.textContent + `${new Date().toLocaleTimeString()} ${msg}\n`).slice(-6000);
 }
 const fmtMHz = (hz) => (hz / 1e6).toFixed(6);
+// CW の文章の記録（2026-11-15 実機で単語が時々抜けたので、単語ごとの返事と時刻を残す。つなぐたびに消す）
+function clog(msg) {
+  log(msg);
+  const d = new Date(), el = $('cwLog');
+  const ts = d.toLocaleTimeString() + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  el.textContent = (el.textContent + `${ts} ${msg}\n`).slice(-8000);
+}
 let lastStatus = ['stHello'];   // 言語を切り替えたときに出し直すため、キーで覚える
 function status(key, vars) { lastStatus = [key, vars]; $('status').textContent = t(key, vars); }
 
@@ -207,6 +214,8 @@ class DemoLink {
     } else if (bytes[4] === 0x1A && bytes[5] === 0x03) {
       if (bytes.length > 7) { this.widths[this.fil] = bytes[6]; this.pbt1 = [0x01, 0x28]; this.pbt2 = [0x01, 0x28]; reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, 0xFB, 0xFD]); }
       else reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, 0x1A, 0x03, this.widths[this.fil], 0xFD]);
+    } else if (bytes[4] === 0x17) {   // CW の文章（デモは受け付けるだけ）
+      reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, this.mode === 0x03 || this.mode === 0x07 ? 0xFB : 0xFA, 0xFD]);
     } else if (bytes[4] === 0x16 && bytes[5] === 0x50) {
       if (bytes.length > 7) { this.lock = bytes[6]; reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, 0xFB, 0xFD]); }
       else reply([0xFE, 0xFE, CTRL_ADDR, RADIO_ADDR, 0x16, 0x50, this.lock || 0, 0xFD]);
@@ -362,7 +371,8 @@ async function handshake() {
 // 送る列がどんどん長くなり、ボタンで送った命令が古い読み出しの後ろに並んで、その古い返事で表示が戻っていた。
 let pollBusy = false;
 async function poll() {
-  if (!link || Date.now() < quietUntil || pendingHz || pollBusy || load.depth) return;
+  // CW の文章を送っている間は読まない（2026-11-15 実機で単語が時々抜けた。やり取りを減らして本体のじゃまをしないため）
+  if (!link || Date.now() < quietUntil || pendingHz || pollBusy || load.depth || cwBusy) return;
   pollBusy = true;
   pollCount++;
   try {
@@ -447,8 +457,9 @@ async function connect(kind) {
   if (link) return;
   granted = false; lastReply = 0; pollBusy = false; load.depth = 0; curHz = 0; step = 0; pendingHz = 0; pollCount = 0; radioTs = null; dtxOn = null; ritOn = null; cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); bandMem = {}; stacks = {}; inUse = {}; lastBandCode = 0;
   link = kind === 'demo' ? new DemoLink() : new BleLink();
-  $('bandLog').textContent = '';
+  $('bandLog').textContent = ''; $('cwLog').textContent = '';
   blog(t('blVer', { v: APP_VER }));
+  clog(t('blVer', { v: APP_VER }));
   setButtons(true);
   try {
     status('stConnecting');
@@ -614,7 +625,7 @@ function updateControls() {
   $('wpm').disabled = !on;
   $('pwr').disabled = !on;
   document.querySelectorAll('#bk button, #keytype button').forEach((b) => { b.disabled = !on; });
-  if (!on) { cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); }
+  if (!on) { cwJob++; cwBusy = false; cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); }
   showPower();
   showCw();
   showOffset();
@@ -858,6 +869,7 @@ function showCw() {
   if (cw.pct !== null && !cw.busy.pct) { $('pwr').value = String(cw.pct); updatePowerBar(cw.pct); }
   document.querySelectorAll('#bk button').forEach((b) => b.classList.toggle('on', Number(b.dataset.bk) === cw.bk));
   document.querySelectorAll('#keytype button').forEach((b) => b.classList.toggle('on', Number(b.dataset.key) === cw.key));
+  if (cwPresets) showCwMsg();
 }
 // 本体から読んだ値（本体で変えたら合わせる。送ってから 1.5 秒は古い読み値で戻さない）
 function onRadioCw(key, value) {
@@ -888,6 +900,133 @@ document.querySelectorAll('#bk button').forEach((b) => {
 });
 document.querySelectorAll('#keytype button').forEach((b) => {
   b.addEventListener('click', () => { if (link) sendCw('key', Number(b.dataset.key)); });
+});
+
+// ---- モールスの文章を送る（2026-11-15 ユーザーの希望。入力欄と定型文 4 つ） ----
+// CI-V 17 + 文字（ASCII、1 回 30 文字まで）で本体のキーヤーが送信する。17 FF で止める（CI-V Reference Guide p.17）。
+// 長い文章は空白のところで 29 文字以下に分け、1 つ送り終わるころ（今の CW スピードから計算）に次を送る。
+// 定型文は localStorage の ic705bt.cwmsg に覚える（この端末の中だけ。どこへも送らない）。
+const CW_OK = /[0-9A-Z/?.\-,:'()=+"@^ ]/;
+const MORSE = { A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--',
+  N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
+  0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.',
+  '/': '-..-.', '?': '..--..', '.': '.-.-.-', '-': '-....-', ',': '--..--', ':': '---...', "'": '.----.', '(': '-.--.', ')': '-.--.-',
+  '=': '-...-', '+': '.-.-.', '"': '.-..-.', '@': '.--.-.' };
+const CW_DEFAULTS = ['CQ CQ CQ', '5NN TU', 'TU 73', 'QRZ?'];
+var cwJob = 0, cwBusy = false;   // var: 起動時に showCwMsg が先に呼ばれても困らないように
+function cwClean(s) {
+  return Array.from(s.toUpperCase().replace(/[“”]/g, '"').replace(/[‘’]/g, "'")).filter((c) => CW_OK.test(c)).join('').replace(/\s+/g, ' ').trim();
+}
+// 単語ごとに分ける（29 文字より長い単語は 29 文字で切る。続きがあるものは最後に空白を足して、単語の間をあける）。
+// 2026-11-15 実機: 30 文字ずつ「送り終わってから次」だと、つなぎ目に不自然な間があいた。
+// 本体は送信中に届いた 17 を続きとしてためる（N1MM などと同じ使い方）と考え、小さく分けて、送り終わる少し前（CW_LEAD）に次を送る。
+function cwChunks(s) {
+  const out = [];
+  for (const w of s.split(' ')) for (let i = 0; i < w.length; i += 29) out.push(w.slice(i, i + 29));
+  return out.map((p, i) => (i < out.length - 1 ? p + ' ' : p));
+}
+const CW_LEAD = 1500;   // 送り終わる予定のこのミリ秒前に、次の単語を本体へ送っておく
+// 送るのにかかる時間（ミリ秒）。1 単位 = 1200 / WPM ミリ秒。短点 1・長点 3・符号の間 1・文字の間 3・単語の間 7
+function cwMs(s) {
+  let units = 0, join = 0;
+  for (const c of s) {
+    if (c === '^') { join = 2; continue; }
+    if (c === ' ') { units += 4; continue; }   // 文字の間 3 に足して 7
+    const m = MORSE[c];
+    if (!m) continue;
+    for (const e of m) units += (e === '.' ? 1 : 3) + 1;
+    units += join > 1 ? 0 : 2;                 // 符号の間 1 に足して文字の間 3（^ のあとの 1 文字目は続ける）
+    if (join) join--;
+  }
+  return (units * 1200) / (cw.wpm || 20);
+}
+function cwSay(key, v) { $('cwStatus').textContent = key ? t(key, { v }) : ''; }
+async function cwSendText(text) {
+  if (!link || !cwCanSend()) return;
+  const s = cwClean(text);
+  if (!s) { cwSay('cwEmpty'); return; }
+  if (cwBusy) await cwStop(true);
+  const job = ++cwJob;
+  cwBusy = true; showCwMsg();
+  try {
+    let end = Date.now();   // 本体にためた分を送り終わる予定の時刻
+    cwSay('cwSending', s);
+    clog(t('clText', { v: s, w: cw.wpm || '?' }));
+    for (const p of cwChunks(s)) {
+      while (end - Date.now() > CW_LEAD) { if (job !== cwJob || !link) return; await sleep(50); }
+      // 本体が「できません」（FA）と返したら、0.5 秒あけて 3 回まで送り直す（ためる場所がいっぱいのときに備えて）
+      let r = null;
+      for (let n = 0; n < 4; n++) {
+        if (job !== cwJob || !link) return;
+        const t0 = Date.now();
+        r = await sendWait(civ(0x17, ...ascii(p)), t('nCwMsg', { v: p.trim() }), 1000, (x) => x[4] === 0xFB || x[4] === 0xFA);
+        const left = Math.round((end - Date.now()) / 100) / 10;
+        clog(t('clWord', { v: p.trim(), r: r ? (r[4] === 0xFB ? 'OK' : t('clNg')) : t('blNone'), ms: Date.now() - t0, left: Math.max(0, left) }));
+        if (!r || r[4] !== 0xFA) break;
+        await sleep(500);
+      }
+      if (r && r[4] === 0xFA) { if (job === cwJob) cwSay('cwNg'); return; }
+      end = Math.max(end, Date.now()) + cwMs(p);
+    }
+    while (Date.now() < end) { if (job !== cwJob || !link) return; await sleep(100); }
+    clog(t('clEnd'));
+    if (job === cwJob) cwSay(cw.bk === 0 ? 'cwDoneBkOff' : 'cwDone');
+  } catch (e) { log(t('lgSendFail', { msg: e.message })); }
+  finally { if (job === cwJob) { cwBusy = false; showCwMsg(); } }
+}
+async function cwStop(quiet) {
+  cwJob++; cwBusy = false; showCwMsg();
+  if (!quiet) cwSay('cwStopped');
+  clog(t('cwStopped'));
+  try { await send(civ(0x17, 0xFF), t('nCwStop')); } catch (e) { log(t('lgSendFail', { msg: e.message })); }
+}
+function cwCanSend() { return fil.mode == null || fil.mode === 0x03 || fil.mode === 0x07; }
+function loadCwPresets() {
+  try { const a = JSON.parse(localStorage.getItem('ic705bt.cwmsg') || 'null'); if (Array.isArray(a) && a.length === 4) return a.map(String); } catch (e) { /* 初めは決まった文 */ }
+  return CW_DEFAULTS.slice();
+}
+var cwPresets = loadCwPresets();
+function showCwMsg() {
+  const on = !!link, ok = on && cwCanSend() && !cwBusy;
+  // 送っている間は「止める」（と切る・言語など本体へ送らないもの）以外を押せなくする（2026-11-15 ユーザーの希望。
+  // 送っている間に読みに行くのを止めたら単語が抜けなくなったので、ページのボタンで本体へ送る命令も止める）
+  document.querySelectorAll('.cols section:not(#secCw), .tune, .unitrow').forEach((el) => { el.inert = cwBusy; el.classList.toggle('cwdim', cwBusy); });
+  if (cwBusy) {
+    $('wpm').disabled = true;
+    document.querySelectorAll('#bk button, #keytype button').forEach((b) => { b.disabled = true; });
+  } else if (on) {
+    $('wpm').disabled = false;
+    document.querySelectorAll('#bk button, #keytype button').forEach((b) => { b.disabled = false; });
+  }
+  $('cwText').disabled = !on || cwBusy;
+  document.querySelectorAll('.cwp input').forEach((el) => { el.disabled = cwBusy; });
+  $('cwSend').disabled = !ok;
+  $('cwStop').disabled = !on || !cwBusy;
+  document.querySelectorAll('#cwPresets button').forEach((b, i) => {
+    b.disabled = !ok || !cwClean(cwPresets[i]);
+    b.querySelector('.fnval').textContent = cwClean(cwPresets[i]) || '--';
+  });
+  // 知らせ: CW でない > ブレークイン OFF（本体の仕様で電波は出ず、サイドトーンだけ。2026-11-15 実機で確認）
+  const hints = [t('cwNotCw'), t('cwBkOff')], cur = $('cwStatus').textContent;
+  if (!cwBusy) {
+    if (on && !cwCanSend()) cwSay('cwNotCw');
+    else if (on && cw.bk === 0) cwSay('cwBkOff');
+    else if (hints.includes(cur)) cwSay('');
+  }
+}
+// 念のため: 送っている間に押せなくした場所のクリックは、ここで止める（inert に加えて）
+document.addEventListener('click', (e) => { if (cwBusy && e.target.closest && e.target.closest('.cwdim')) { e.stopPropagation(); e.preventDefault(); } }, true);
+$('cwSend').addEventListener('click', () => cwSendText($('cwText').value));
+$('cwText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); cwSendText($('cwText').value); } });
+$('cwStop').addEventListener('click', () => cwStop(false));
+document.querySelectorAll('#cwPresets button').forEach((b, i) => b.addEventListener('click', () => cwSendText(cwPresets[i])));
+document.querySelectorAll('.cwp input').forEach((el, i) => {
+  el.value = cwPresets[i];
+  el.addEventListener('input', () => {
+    cwPresets[i] = el.value;
+    try { localStorage.setItem('ic705bt.cwmsg', JSON.stringify(cwPresets)); } catch (e) { /* 覚えられなくても動く */ }
+    showCwMsg();
+  });
 });
 
 // ---- 最大出力（MAX TX PWR）。本体の FUNCTION → MAX TX PWR と同じ（ユーザーの希望） ----
@@ -967,6 +1106,7 @@ function idxToHz(mode, i) {
 const fmtWidth = (hz) => (hz >= 1000 ? `${(hz / 1000).toFixed(hz % 100 ? 2 : 1)} kHz` : `${hz} Hz`);
 
 function showFilter() {
+  if (cwPresets) showCwMsg();   // モードが CW のときだけ文章を送れる
   const on = !!link;
   const max = widthMax(fil.mode);
   $('modeValue').textContent = on && fil.mode != null ? (MODE_NAMES[fil.mode] || '?') : '--';

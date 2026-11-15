@@ -139,6 +139,30 @@
       <button data-bk="1" disabled>SEMI</button>
       <button data-bk="2" disabled>FULL</button>
     </div>
+
+    <!-- モールスの文章を送る（CI-V 17。本体のキーヤーが送信する） -->
+    <div class="row"><span class="rowname" data-i18n="cwMsg"></span></div>
+    <input id="cwText" class="cwtext" type="text" maxlength="200" autocomplete="off" autocapitalize="characters" spellcheck="false" disabled data-i18n-ph="cwPh" data-i18n-aria="cwMsg">
+    <div class="seg two">
+      <button id="cwSend" disabled data-i18n="cwSend"></button>
+      <button id="cwStop" disabled data-i18n="cwStop"></button>
+    </div>
+    <div id="cwStatus" class="cwstatus"></div>
+    <div class="row"><span class="rowname" data-i18n="cwPresets"></span></div>
+    <div id="cwPresets" class="fngrid two">
+      <button class="fn" disabled><span class="fnname">M1</span><span class="fnval"></span></button>
+      <button class="fn" disabled><span class="fnname">M2</span><span class="fnval"></span></button>
+      <button class="fn" disabled><span class="fnname">M3</span><span class="fnval"></span></button>
+      <button class="fn" disabled><span class="fnname">M4</span><span class="fnval"></span></button>
+    </div>
+    <details class="cwedit">
+      <summary data-i18n="cwEdit"></summary>
+      <label class="cwp">M1 <input type="text" maxlength="200" autocomplete="off" spellcheck="false"></label>
+      <label class="cwp">M2 <input type="text" maxlength="200" autocomplete="off" spellcheck="false"></label>
+      <label class="cwp">M3 <input type="text" maxlength="200" autocomplete="off" spellcheck="false"></label>
+      <label class="cwp">M4 <input type="text" maxlength="200" autocomplete="off" spellcheck="false"></label>
+    </details>
+    <p class="note" data-i18n="cwNote"></p>
   </section>
 
   <section class="dtx" id="secPwr">
@@ -217,6 +241,8 @@
     <summary data-i18n="logTitle"></summary>
     <div class="label" data-i18n="bandLogTitle"></div>
     <pre id="bandLog"></pre>
+    <div class="label" data-i18n="cwLogTitle"></div>
+    <pre id="cwLog"></pre>
     <div class="label" data-i18n="logAllTitle"></div>
     <pre id="log"></pre>
   </details>

@@ -113,6 +113,16 @@ pre { font-size: .75rem; max-height: 240px; overflow: auto; white-space: pre-wra
 /* バンドの記憶 3 つ（左・中央・右）を選ぶボタン */
 .fngrid.three { grid-template-columns: repeat(3, 1fr); margin-top: 6px; }
 .stacklabel { margin-top: 10px; }
+/* モールスの文章を送る */
+.cwtext, .cwp input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 1rem; font-family: ui-monospace, Consolas, monospace;
+  text-transform: uppercase; border: 1px solid var(--line); border-radius: 8px; background: var(--bg, transparent); color: inherit; margin-top: 6px; }
+.cwstatus { min-height: 1.3em; color: var(--sub); font-size: .85rem; margin-top: 4px; word-break: break-all; }
+.fngrid.two { grid-template-columns: repeat(2, 1fr); }
+#cwPresets .fnval { font-size: .85rem; font-family: ui-monospace, Consolas, monospace; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cwedit { margin-top: 8px; }
+.cwdim { opacity: .4; transition: opacity .2s; }   /* CW の文章を送っている間は押せない */
+.cwp { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--sub); }
+.cwp input { margin-top: 4px; }
 #stack .fnval { font-size: .85rem; font-family: ui-monospace, Consolas, monospace; }
 
 
