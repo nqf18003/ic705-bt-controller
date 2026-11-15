@@ -1,0 +1,122 @@
+:root { --bg: #f6f7f9; --fg: #1b1f24; --sub: #5b6470; --card: #fff; --line: #d5dae0; --accent: #0b6bcb; --warn: #c62828;
+        --knob: #e3e7ec; --knob-tick: #9aa3ad; --knob-dimple: #c3cad3; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #15181c; --fg: #e8ebef; --sub: #9aa3ad; --card: #1f242a; --line: #353c45; --accent: #4ea1f5; --warn: #e05252;
+          --knob: #2c333b; --knob-tick: #5b6470; --knob-dimple: #1a1e23; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
+main { max-width: 560px; margin: 0 auto; padding: 16px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 16px; }
+h1 { font-size: 1.1rem; margin: 0; }
+.langbtn { flex: none; font-size: .85rem; padding: 6px 12px; }
+.freq { font-family: ui-monospace, Consolas, monospace; font-size: clamp(2.4rem, 13vw, 4.5rem); font-weight: 700;
+        text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 8px 4px; }
+.unitrow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 16px; flex-wrap: wrap; }
+.unit { color: var(--sub); }
+.copy { flex: none; font-size: .9rem; padding: 8px 14px; }
+.dtx { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+.dtxhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dtxstate { font-size: .85rem; color: var(--accent); font-weight: 700; }
+.dtxstate.off { color: var(--warn); font-weight: 400; }
+.dtxvalue { font-family: ui-monospace, Consolas, monospace; font-size: 2rem; font-weight: 700; text-align: center; margin: 4px 0; }
+/* スライダー: 左側を色で塗らない（ユーザーの希望）。溝は全体を同じ色に */
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; background: transparent; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--line); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+input[type=range]::-moz-range-progress { background: transparent; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%;
+  background: var(--accent); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+input[type=range]:disabled::-webkit-slider-thumb { background: var(--sub); }
+.dtxscale { display: flex; justify-content: space-between; color: var(--sub); font-size: .8rem; }
+
+.tune { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+.knob { flex: 1 1 60%; width: 60%; aspect-ratio: 1; max-width: 300px; touch-action: none; cursor: grab; }
+.side { flex: 1 1 40%; display: flex; flex-direction: column; gap: 8px; }
+.label { color: var(--sub); font-size: .85rem; }
+.steps { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.steps button { padding: 10px 4px; font-size: .95rem; }
+.steps button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* ロックのスライドスイッチ */
+/* すべらせたときだけ切り替わる（軽く押しただけ・まわりを押しただけでは変わらない） */
+.lock { margin-top: 8px; padding: 10px 0; font-size: .95rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#lockText { white-space: nowrap; user-select: none; }
+.lock .track { position: relative; width: 84px; height: 32px; border-radius: 16px; background: var(--line); flex: none;
+               transition: background .15s; touch-action: none; cursor: grab; }
+.lock .thumb { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff;
+               box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: left .15s; }
+.lock .track.dragging .thumb { transition: none; }
+.lock.on .track { background: var(--warn); }
+.lock.on .thumb { left: 55px; }
+.lock.on #lockText { color: var(--warn); font-weight: 700; }
+.lock.disabled { opacity: .45; }
+.lock.disabled .track { cursor: default; }
+.buttons { display: flex; gap: 8px; }
+button { flex: 1; font-size: 1.05rem; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+         background: var(--card); color: var(--fg); }
+button#connect { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .45; }
+.status { color: var(--sub); min-height: 3em; }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-top: 12px; }
+summary { cursor: pointer; }
+.check { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.check input { width: 20px; height: 20px; }
+.note { color: var(--sub); font-size: .85rem; margin: 6px 0; }
+pre { font-size: .75rem; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; }
+.rowname { font-size: .95rem; }
+.rowvalue { font-family: ui-monospace, Consolas, monospace; font-size: 1.3rem; font-weight: 700; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+.seg button { padding: 10px 4px; font-size: .95rem; }
+.seg.two { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
+.seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.powerinfo { color: var(--sub); font-size: .85rem; margin-top: 4px; }
+/* 送信パワー: 本体の RF POWER 表示に合わせる（10 W = 100 %） */
+.pwrwrap { margin-top: 4px; }
+.pwrinner { padding-top: 18px; }
+.pwrcaplabel { position: absolute; top: 0; transform: translateX(-50%); font-size: .75rem; color: var(--warn); font-weight: 700; white-space: nowrap; }
+.pwrbar { position: relative; height: 14px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.pwrfill { position: absolute; left: 0; top: 0; bottom: 0; background: #f2c200; }
+.pwrover { position: absolute; top: 0; bottom: 0;
+           background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(198,40,40,.35) 4px 7px); }
+.pwrcap { position: absolute; top: -2px; bottom: -2px; width: 3px; margin-left: -1.5px; background: var(--warn); }
+.pwrscale { position: relative; height: 1.2em; color: var(--sub); font-size: .75rem; margin: 0 13px; }
+.pwrscale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.pwrscale span:first-child { transform: none; }
+.pwrscale span:last-child { transform: translateX(-100%); }
+.pwrinner { position: relative; margin: 0 13px; }
+.pwrinfo { font-size: .9rem; margin-top: 4px; }
+.pwrlimited { color: var(--warn); font-weight: 700; }
+
+
+/* 受信: 本体の FUNCTION 画面のような四角いボタン（上に名前、下に今の値。ON のときは青い枠） */
+.fngrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.fn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; }
+.fnname { font-size: .78rem; color: var(--sub); }
+.fnval { font-size: .95rem; font-weight: 700; }
+.fn.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.fn.on .fnval { color: var(--accent); }
+
+
+/* バンドのボタン（6 個 × 2 段） */
+.bandgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; }
+.bandgrid button { padding: 10px 0; font-size: .95rem; }
+.bandgrid button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+
+/* モードのボタン（4 個 × 2 段） */
+.modegrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0 4px; }
+.modegrid button { padding: 10px 0; font-size: .95rem; }
+.modegrid button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+
+/* 本体から読み取り中（周波数の下の帯）。その間は操作を止めて薄く見せる */
+.loading { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); font-size: .9rem; }
+.loadtrack { height: 6px; margin-top: 6px; border-radius: 3px; background: rgba(127, 127, 127, .25); overflow: hidden; }
+.loadbar { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.loadbar.busy { animation: loadpulse 1s ease-in-out infinite alternate; }
+@keyframes loadpulse { from { opacity: .3; } to { opacity: 1; } }
+body.loading .tune, body.loading section.dtx { pointer-events: none; opacity: .5; }
+
+[hidden] { display: none !important; }

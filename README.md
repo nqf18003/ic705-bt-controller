@@ -1,0 +1,79 @@
+# IC-705 Bluetooth コントローラー
+
+**▶ 使う（公開ページ）: https://nqf18003.github.io/ic705-bt-controller/**
+
+[English is below](#ic-705-bluetooth-controller)
+
+Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作するシンプルなウェブページです。インストールは要りません。
+
+## 使えるもの
+- Android の Chrome、パソコンの Chrome・Edge（Web Bluetooth に対応したブラウザー）
+- iPhone・iPad の Safari は Web Bluetooth に対応していないので使えません。
+
+## できること
+- 周波数の表示・コピー、つまみで周波数を合わせる（本体の TS と連動）、ダイヤルロック
+- バンドの切り替え（そのバンドで最後に使った周波数・モードへ）
+- RIT・ΔTX（±500 Hz）
+- CW: スピード・キーの種類・ブレークイン
+- 送信パワー（今の出力制限も表示）
+- モード・フィルター（FIL1〜3・帯域幅）
+- 受信: P.AMP・NOTCH・NB・NR
+- 日本語・英語の切り替え、表示する項目の選択
+
+## はじめてつなぐとき
+1. IC-705 の MENU → SET → Bluetooth設定 → Bluetooth を ON にする。
+2. 同じ画面の「<<相手の機器からペアリング>>」を押して待ち受けにする。
+3. このページの「つなぐ」を押し、「ICOM BT(IC-705)」を選ぶ。
+4. 一度つながれば、次からは 2 の手順はいりません。
+
+- スマホやパソコンの「設定」の Bluetooth からはペアリングしないでください（このページが直接つなぎます）。
+- 本体の CI-V アドレスは初期値の A4 のままにしてください（MENU → SET → 外部端子 → CI-V → CI-V アドレス）。
+- 「デモ」ボタンで、無線機が無くても画面を試せます。
+
+## データの行き先
+- 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
+- ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目。
+
+## ご注意
+- 個人が作ったもので、Icom とは関係ありません。使うときは自己責任でお願いします。
+- 無線機との BLE のつなぎ方は、公開されている SatHunter と K7MDL2 の IC-705-BLE-Serial-Example を参考にしました。
+
+---
+
+# IC-705 Bluetooth Controller
+
+**▶ Open the page: https://nqf18003.github.io/ic705-bt-controller/**
+
+A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls it from the browser. No installation needed.
+
+## Requirements
+- Chrome on Android, or Chrome / Edge on a PC (browsers with Web Bluetooth)
+- Safari on iPhone / iPad does not support Web Bluetooth.
+
+## Features
+- Frequency display and copy, tuning knob (follows the TS of the radio), dial lock
+- Band buttons (go to the last frequency and mode used on that band)
+- RIT / ΔTX (±500 Hz)
+- CW: speed, key type, break-in
+- TX power (also shows the current power limit)
+- Mode and filter (FIL1-3, width)
+- Receive: P.AMP, NOTCH, NB, NR
+- Japanese / English, choose which sections to show
+
+## First connection
+1. On the IC-705: MENU → SET → Bluetooth Set → turn Bluetooth ON.
+2. On the same screen, touch <<Pairing Reception>> to wait for pairing.
+3. Press "Connect" on this page and choose "ICOM BT(IC-705)".
+4. After the first time, step 2 is not needed.
+
+- Do not pair from the Bluetooth settings of your phone or PC (this page connects directly).
+- Keep the CI-V address of the radio at the default A4 (MENU → SET → Connectors → CI-V → CI-V Address).
+- The "Demo" button lets you try the page without a radio.
+
+## Where data goes
+- The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
+- Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, and which sections to show.
+
+## Notes
+- This is a personal project and is not affiliated with Icom. Use at your own risk.
+- The BLE connection method is based on the public SatHunter and K7MDL2 IC-705-BLE-Serial-Example projects.

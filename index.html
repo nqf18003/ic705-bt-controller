@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IC-705 Bluetooth コントローラー</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1 data-i18n="title"></h1>
+    <button id="lang" class="langbtn" data-i18n="langButton"></button>
+  </div>
+
+  <div id="freq" class="freq">--.---.---</div>
+  <div class="unitrow">
+    <span id="unit" class="unit">MHz</span>
+    <button id="copy" class="copy" disabled data-i18n="copy"></button>
+    <button id="copyK" class="copy" disabled data-i18n="copyK"></button>
+  </div>
+  <div id="loading" class="loading" hidden>
+    <div id="loadingText"></div>
+    <div class="loadtrack"><div id="loadingBar" class="loadbar"></div></div>
+  </div>
+
+  <div class="tune">
+    <canvas id="knob" class="knob" data-i18n-aria="knob"></canvas>
+    <div class="side">
+      <div class="label" data-i18n="stepLabel"></div>
+      <div id="steps" class="steps">
+        <button id="stepFine">1 Hz</button>
+        <button id="stepTs">100 Hz（▼）</button>
+      </div>
+      <div class="lock" id="lockBox">
+        <span id="lock" class="track" role="switch" aria-checked="false" data-i18n-aria="lockAria"><span class="thumb"></span></span>
+        <span id="lockText"></span>
+      </div>
+    </div>
+  </div>
+
+  <section class="dtx" id="secBand">
+    <div class="label" data-i18n="bandTitle"></div>
+    <div id="bands" class="bandgrid">
+      <button data-code="1" disabled>1.9</button>
+      <button data-code="2" disabled>3.5</button>
+      <button data-code="3" disabled>7</button>
+      <button data-code="4" disabled>10</button>
+      <button data-code="5" disabled>14</button>
+      <button data-code="6" disabled>18</button>
+      <button data-code="7" disabled>21</button>
+      <button data-code="8" disabled>24</button>
+      <button data-code="9" disabled>28</button>
+      <button data-code="16" disabled>50</button>
+      <button data-code="19" disabled>144</button>
+      <button data-code="20" disabled>430</button>
+    </div>
+  </section>
+
+  <section class="dtx" id="secDtx">
+    <div class="dtxhead">
+      <span class="label" data-i18n="dtxTitle"></span>
+      <span id="dtxState" class="dtxstate"></span>
+    </div>
+    <div id="shiftMode" class="seg">
+      <button data-mode="off" disabled>OFF</button>
+      <button data-mode="rit" disabled>RIT</button>
+      <button data-mode="dtx" disabled>ΔTX</button>
+    </div>
+    <div id="dtxValue" class="dtxvalue">±0 Hz</div>
+    <input id="dtxSlider" type="range" min="-500" max="500" step="10" value="0" disabled data-i18n-aria="dtxAria">
+    <div class="dtxscale"><span>−500</span><span>0</span><span>+500</span></div>
+  </section>
+
+  <section class="dtx" id="secCw">
+    <div class="label" data-i18n="cwTitle"></div>
+    <div class="row">
+      <span class="rowname" data-i18n="wpm"></span>
+      <span id="wpmValue" class="rowvalue">-- WPM</span>
+    </div>
+    <input id="wpm" type="range" min="6" max="48" step="1" value="20" disabled data-i18n-aria="wpm">
+    <div class="dtxscale"><span>6</span><span>48</span></div>
+
+    <div class="row"><span class="rowname" data-i18n="keyType"></span></div>
+    <div id="keytype" class="seg">
+      <button data-key="0" disabled data-i18n="key0"></button>
+      <button data-key="1" disabled data-i18n="key1"></button>
+      <button data-key="2" disabled data-i18n="key2"></button>
+    </div>
+
+    <div class="row"><span class="rowname" data-i18n="bk"></span></div>
+    <div id="bk" class="seg">
+      <button data-bk="0" disabled>OFF</button>
+      <button data-bk="1" disabled>SEMI</button>
+      <button data-bk="2" disabled>FULL</button>
+    </div>
+  </section>
+
+  <section class="dtx" id="secPwr">
+    <div class="label" data-i18n="pwrTitle"></div>
+    <div class="row">
+      <span class="rowname" data-i18n="pwrSet"></span>
+      <span id="pwrValue" class="rowvalue">-- %</span>
+    </div>
+    <!-- 本体の RF POWER 表示と同じ形: 10 W = 100 %、黄色が実際の出力、赤い線が最大出力（MAX TX PWR） -->
+    <div class="pwrwrap">
+      <!-- つまみの中心が動く範囲（左右 13 px 内側）に、帯と目盛りをそろえる -->
+      <div class="pwrinner">
+        <div id="pwrCapLabel" class="pwrcaplabel"></div>
+        <div class="pwrbar">
+          <div id="pwrFill" class="pwrfill"></div>
+          <div id="pwrOver" class="pwrover" hidden></div>
+          <div id="pwrCap" class="pwrcap" hidden></div>
+        </div>
+      </div>
+      <input id="pwr" type="range" min="0" max="100" step="1" value="50" disabled data-i18n-aria="pwr">
+      <div class="pwrscale"><span style="left:0%">0</span><span style="left:25%">2.5 W</span><span style="left:50%">5 W</span><span style="left:75%">7.5 W</span><span style="left:100%">10 W</span></div>
+    </div>
+    <div class="pwrinfo"><span id="pwrActual"></span> <span id="pwrLimited" class="pwrlimited"></span></div>
+    <div class="row">
+      <span class="rowname" data-i18n="maxPwr"></span>
+      <span id="maxpwrValue" class="rowvalue">--</span>
+    </div>
+    <div id="powerSrc" class="powerinfo"></div>
+  </section>
+
+  <section class="dtx" id="secFil">
+    <div class="row">
+      <span class="label" data-i18n="filTitle"></span>
+      <span class="rowvalue"><span data-i18n="mode"></span> <span id="modeValue">--</span></span>
+    </div>
+    <div id="modes" class="modegrid">
+      <button data-mode="0" disabled>LSB</button>
+      <button data-mode="1" disabled>USB</button>
+      <button data-mode="3" disabled>CW</button>
+      <button data-mode="7" disabled>CW-R</button>
+      <button data-mode="4" disabled>RTTY</button>
+      <button data-mode="2" disabled>AM</button>
+      <button data-mode="5" disabled>FM</button>
+      <button data-mode="23" disabled>DV</button>
+    </div>
+    <div id="fil" class="seg">
+      <button data-fil="1" disabled>FIL1</button>
+      <button data-fil="2" disabled>FIL2</button>
+      <button data-fil="3" disabled>FIL3</button>
+    </div>
+    <div class="row">
+      <span class="rowname" data-i18n="filWidth"></span>
+      <span id="filWidthValue" class="rowvalue">--</span>
+    </div>
+    <input id="filWidth" type="range" min="0" max="40" step="1" value="9" disabled data-i18n-aria="filWidth">
+    <div class="dtxscale"><span id="filMin">50 Hz</span><span id="filMax">3.6 kHz</span></div>
+  </section>
+
+  <section class="dtx" id="secRx">
+    <div class="label" data-i18n="rxTitle"></div>
+    <!-- 本体の FUNCTION 画面のような四角いボタン。押すたびに切り替わる（本体と同じ） -->
+    <div class="fngrid">
+      <button id="fnPamp" class="fn" disabled><span class="fnname">P.AMP</span><span id="fnPampVal" class="fnval">--</span></button>
+      <button id="fnNotch" class="fn" disabled><span class="fnname">NOTCH</span><span id="fnNotchVal" class="fnval">--</span></button>
+      <button id="fnNb" class="fn" disabled><span class="fnname">NB</span><span id="fnNbVal" class="fnval">--</span></button>
+      <button id="fnNr" class="fn" disabled><span class="fnname">NR</span><span id="fnNrVal" class="fnval">--</span></button>
+    </div>
+  </section>
+
+  <div class="buttons">
+    <button id="connect" data-i18n="connect"></button>
+    <button id="disconnect" disabled data-i18n="disconnect"></button>
+    <button id="demo" data-i18n="demo"></button>
+  </div>
+
+  <p id="status" class="status"></p>
+
+  <details>
+    <summary data-i18n="showTitle"></summary>
+    <p class="note" data-i18n="showNote"></p>
+    <label class="check"><input type="checkbox" data-sec="secBand"> <span data-i18n="bandTitle"></span></label>
+    <label class="check"><input type="checkbox" data-sec="secDtx"> <span data-i18n="dtxTitle"></span></label>
+    <label class="check"><input type="checkbox" data-sec="secCw"> <span data-i18n="cwTitle"></span></label>
+    <label class="check"><input type="checkbox" data-sec="secPwr"> <span data-i18n="pwrTitle"></span></label>
+    <label class="check"><input type="checkbox" data-sec="secFil"> <span data-i18n="filTitle"></span></label>
+    <label class="check"><input type="checkbox" data-sec="secRx"> <span data-i18n="rxTitle"></span></label>
+  </details>
+
+  <details>
+    <summary data-i18n="firstTime"></summary>
+    <ol>
+      <li data-i18n="first1"></li>
+      <li data-i18n="first2"></li>
+      <li data-i18n="first3"></li>
+      <li data-i18n="first4"></li>
+      <li data-i18n="first5"></li>
+    </ol>
+    <p data-i18n="firstNote"></p>
+  </details>
+
+  <details>
+    <summary data-i18n="logTitle"></summary>
+    <pre id="log"></pre>
+  </details>
+</main>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
