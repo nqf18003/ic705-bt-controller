@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IC-705 Bluetooth コントローラー (for CW)</title>
 <link rel="stylesheet" href="style.css">
+<!-- オフライン対応（ホーム画面に追加）用。zip 版では make-zip.ps1 がこのコメントと manifest の行を消す -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#15181c">
 </head>
 <body>
 <main>
@@ -235,6 +239,17 @@
       <li data-i18n="first5"></li>
     </ol>
     <p data-i18n="firstNote"></p>
+  </details>
+
+  <!-- 電波の無い所で使う（オフライン対応・zip 版）の案内 -->
+  <details>
+    <summary data-i18n="offTitle"></summary>
+    <ol>
+      <li data-i18n="off1"></li>
+      <li data-i18n="off2"></li>
+    </ol>
+    <p><a href="https://github.com/nqf18003/ic705-bt-controller/releases/latest" target="_blank" rel="noopener" data-i18n="offZip"></a></p>
+    <p class="note" data-i18n="offNote"></p>
   </details>
 
   <details id="logBox" hidden>

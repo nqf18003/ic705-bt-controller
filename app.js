@@ -27,7 +27,7 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-16-20';
+const APP_VER = '2026-11-17-21'; // 変えたら sw.js の CACHE も同じ名前に変える
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -1607,3 +1607,8 @@ $('lang').addEventListener('click', () => {
 });
 if (!navigator.bluetooth) status('stNoBt'); else status('stHello');
 renderLang();
+
+// オフライン対応（sw.js）。https・localhost で開いたときだけ。zip 版（ファイルから開く）では使わない
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch((e) => log('sw: ' + e));
+}

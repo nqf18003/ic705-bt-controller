@@ -2,6 +2,8 @@
 
 **▶ 使う（公開ページ）: https://nqf18003.github.io/ic705-bt-controller/**
 
+**⬇ ダウンロード（パソコン用 zip。インターネットが無くても使える）: https://github.com/nqf18003/ic705-bt-controller/releases/latest**
+
 [English is below](#ic-705-bluetooth-controller-for-cw)
 
 Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作するシンプルなウェブページです。インストールは要りません。
@@ -37,6 +39,24 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
   3 台目がつながらないときは、本体の MENU → SET → Bluetooth設定 → ペアリング/接続 で、使わない機器を削除してからやり直してください。
 - 「デモ」ボタンで、無線機が無くても画面を試せます。
 
+## 電波の無い所で使うには（オフライン）
+山の上など、インターネットにつながらない所で使う方法は 2 つあります。
+
+**A. ホーム画面に追加する（スマホ・タブレット・パソコン）**
+1. 電波のある所で、公開ページを Chrome で開きます。
+2. Chrome のメニュー（︙）→「ホーム画面に追加」または「アプリをインストール」を押します。
+3. 次からは、ホーム画面（パソコンはデスクトップなど）のアイコンから開きます。電波が無くても開けます。
+- インターネットにつながっているときに開くと、新しい版に自動で入れ替わります。
+
+**B. zip をダウンロードする（パソコンだけ）**
+1. [Releases](https://github.com/nqf18003/ic705-bt-controller/releases/latest) から `ic705-bt-controller-….zip` をダウンロードします。
+2. zip を右クリック →「すべて展開」で展開します。
+3. できたフォルダの中の `index.html` をダブルクリックして、Chrome か Edge で開きます。
+- フォルダの中のファイルは、ばらばらにしないでください。
+- 定型文などは、公開ページとは別に保存されます。
+- 自動では新しい版になりません。新しい版は、もう一度ダウンロードしてください。
+- スマホ・タブレットでは、zip 版は使えません（ダウンロードしたファイルからは Bluetooth が使えないため）。A の方法を使ってください。
+
 ## 本体で設定を変えたときは、少し待ってから操作してください
 このページは本体の状態を順番に読みに行っているので、**本体のつまみやボタンで変えた設定が、ページの表示に出るまで少し時間がかかります**。
 表示が変わる前にページで続けて操作すると、古い値のまま動くことがあります。本体で変えたら、ページの表示が変わるのを待ってから操作してください。
@@ -50,6 +70,7 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 - 無線機とのやり取りは Bluetooth でつないだ IC-705 とだけ行います。インターネットへは何も送りません。外部のスクリプトも読み込みません。
 - ブラウザーの中に覚えるもの: 機器の識別番号（ランダムな文字列。無線機が相手を見分けるため）・言語・表示する項目・1 列か 2 列か・
   前に読んだバンドの記憶の周波数（次につないだときに、どの記憶が変わったかを見分けるため）・CW の定型文と入力欄の文。
+- オフラインで開けるように、このページのファイル（HTML・プログラム・アイコン）を端末の中に取っておきます（Service Worker）。ほかのサイトのファイルは取りに行きません。
 
 ## ご注意
 - 個人が作ったもので、Icom とは関係ありません。使うときは自己責任でお願いします。
@@ -60,6 +81,8 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
 # IC-705 Bluetooth Controller (for CW)
 
 **▶ Open the page: https://nqf18003.github.io/ic705-bt-controller/**
+
+**⬇ Download (zip for PC, works without internet): https://github.com/nqf18003/ic705-bt-controller/releases/latest**
 
 A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls it from the browser. No installation needed.
 
@@ -94,6 +117,24 @@ A simple web page that connects to an Icom IC-705 over Bluetooth LE and controls
   If a third device cannot connect, delete an unused device in MENU → SET → Bluetooth Set → Pairing/Connect, then try again.
 - The "Demo" button lets you try the page without a radio.
 
+## Using without internet (offline)
+There are two ways to use the page where there is no internet, such as on a mountain.
+
+**A. Add to Home screen (phone, tablet, PC)**
+1. Where you have internet, open the public page in Chrome.
+2. Choose Chrome menu (⋮) → "Add to Home screen" or "Install app".
+3. From then on, open it from the icon (on a PC, on the desktop etc.). It opens even without internet.
+- When opened with internet, it updates to the new version automatically.
+
+**B. Download the zip (PC only)**
+1. Download `ic705-bt-controller-….zip` from [Releases](https://github.com/nqf18003/ic705-bt-controller/releases/latest).
+2. Right-click the zip → "Extract All".
+3. Double-click `index.html` in the extracted folder and open it with Chrome or Edge.
+- Keep all files in the folder together.
+- Presets are stored separately from the public page.
+- It does not update by itself. Download it again for a new version.
+- The zip version does not work on phones and tablets (Bluetooth is not available for downloaded files there). Use A instead.
+
 ## After changing a setting on the radio, wait a moment
 This page reads the state of the radio one item at a time, so **a change made with the knobs or buttons of the radio takes a little time to appear on the page**.
 If you operate the page before the display updates, it may act on the old value. After changing something on the radio, wait until the page shows it.
@@ -107,6 +148,7 @@ If you operate the page before the display updates, it may act on the old value.
 - The page talks only to the IC-705 connected over Bluetooth. Nothing is sent to the internet, and no external scripts are loaded.
 - Stored in the browser: a device ID (a random string, so the radio can recognize this page), language, which sections to show, 1 or 2 columns,
   the band stack frequencies read last time (to tell which register changed at the next connection), and the CW presets and message.
+- To open offline, the files of this page (HTML, program, icons) are kept on the device (Service Worker). Files of other sites are not fetched.
 
 ## Notes
 - This is a personal project and is not affiliated with Icom. Use at your own risk.

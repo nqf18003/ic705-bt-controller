@@ -5,6 +5,7 @@
           --knob: #2c333b; --knob-tick: #5b6470; --knob-dimple: #1a1e23; }
 }
 * { box-sizing: border-box; }
+a { color: var(--accent); }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
 main { max-width: 560px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; }
 /* せまい画面（スマホ）: 2 列用の枠（.cols・.col）を無いものとして 1 列に並べる。
