@@ -1,9 +1,9 @@
 // オフライン対応（Service Worker）。このページのファイルだけを端末の中に取っておき、
-// 電波が無いときはそれを使う。外のサイトへは何も送らない・何も取りに行かない。
+// インターネットにつながらないときはそれを使う。外のサイトへは何も送らない・何も取りに行かない。
 // 版を上げたら CACHE の名前も app.js の APP_VER に合わせて変える（古い取り置きを消すため）。
-const CACHE = 'ic705bt-2026-11-17-21';
+const CACHE = 'ic705bt-2026-11-17-22';
 const FILES = ['./', 'index.html', 'app.js', 'i18n.js', 'style.css', 'manifest.json', 'icon-192.png', 'icon-512.png'];
-const WAIT_NET_MS = 3000; // 電波が弱いとき、これ以上待たずに取っておいた物を使う
+const WAIT_NET_MS = 3000; // 通信が遅いとき、これ以上待たずに取っておいた物を使う
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));

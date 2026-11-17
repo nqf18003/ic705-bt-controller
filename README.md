@@ -39,13 +39,13 @@ Icom IC-705 に Bluetooth（BLE）でつなぎ、ブラウザーから操作す�
   3 台目がつながらないときは、本体の MENU → SET → Bluetooth設定 → ペアリング/接続 で、使わない機器を削除してからやり直してください。
 - 「デモ」ボタンで、無線機が無くても画面を試せます。
 
-## 電波の無い所で使うには（オフライン）
+## インターネットにつながらない所で使うには（オフライン）
 山の上など、インターネットにつながらない所で使う方法は 2 つあります。
 
 **A. ホーム画面に追加する（スマホ・タブレット・パソコン）**
-1. 電波のある所で、公開ページを Chrome で開きます。
-2. Chrome のメニュー（︙）→「ホーム画面に追加」または「アプリをインストール」を押します。
-3. 次からは、ホーム画面（パソコンはデスクトップなど）のアイコンから開きます。電波が無くても開けます。
+1. インターネットにつながる所で、公開ページを Chrome で開きます。
+2. Chrome のメニュー（︙）→「ホーム画面に追加」または「アプリをインストール」を押します（ストアからアプリを入れるわけではありません）。
+3. 次からは、ホーム画面（パソコンはデスクトップなど）のアイコンから開きます。インターネットにつながらなくても開けます。
 - インターネットにつながっているときに開くと、新しい版に自動で入れ替わります。
 
 **B. zip をダウンロードする（パソコンだけ）**
@@ -122,7 +122,7 @@ There are two ways to use the page where there is no internet, such as on a moun
 
 **A. Add to Home screen (phone, tablet, PC)**
 1. Where you have internet, open the public page in Chrome.
-2. Choose Chrome menu (⋮) → "Add to Home screen" or "Install app".
+2. Choose Chrome menu (⋮) → "Add to Home screen" or "Install app" (this does not install anything from an app store).
 3. From then on, open it from the icon (on a PC, on the desktop etc.). It opens even without internet.
 - When opened with internet, it updates to the new version automatically.
 
