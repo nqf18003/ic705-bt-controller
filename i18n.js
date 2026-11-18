@@ -159,6 +159,8 @@ const TEXTS = {
   clWord:       ['送った「{v}」→ 返事 {r}（{ms} ms、本体にためた残り {left} 秒）', 'sent "{v}" -> reply {r} ({ms} ms, {left} s still queued)'],
   clNg:         ['できません（FA）', 'refused (FA)'],
   clEnd:        ['送り終わりの予定時刻', 'expected end of sending'],
+  clLock:       ['ダイヤルをロックした（送り終わったら外す）', 'locked the dial (will unlock when done)'],
+  clUnlock:     ['ダイヤルのロックを外した', 'unlocked the dial'],
   nCwMsg:       ['(CW の文章 {v})', '(CW message {v})'],
   nCwStop:      ['(CW の文章を止める)', '(stop CW message)'],
   nBk:          ['(ブレークイン {v})', '(break-in {v})'],

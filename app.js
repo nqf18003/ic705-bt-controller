@@ -14,6 +14,30 @@ const APP_NAME = 'IC705 BT Reader';  // 無線機の一覧に出る名前（16 �
 const $ = (id) => document.getElementById(id);
 const hex = (a) => Array.from(a, (b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 見えないタブでも正確に動く時計（2026-11-18 ユーザー報告: CW の文章を送っている途中で別のタブに移ると、単語の間が間延びした）。
+// Chrome は見えないタブの setTimeout を 1 秒に 1 回まで間引くが、裏の作業場（Web Worker）の時計はあまり間引かない。
+// ページの中で作る小さな Worker で、外へは何も送らない。Worker が使えない・止まったときは、ふつうの時計（少し遅れても必ず進む）で代わりに進む。
+const preciseSleep = (() => {
+  let w = null, n = 0;
+  const pend = new Map();
+  try {
+    const src = 'onmessage = (e) => { setTimeout(() => postMessage(e.data.id), e.data.ms); };';
+    w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    w.onmessage = (e) => { const r = pend.get(e.data); if (r) { pend.delete(e.data); r(); } };
+    w.onerror = () => { w = null; for (const r of pend.values()) r(); pend.clear(); };
+  } catch (e) { w = null; }
+  return (ms) => {
+    if (!w) return sleep(ms);
+    return new Promise((resolve) => {
+      const id = ++n;
+      let done = false;
+      const fin = () => { if (!done) { done = true; pend.delete(id); resolve(); } };
+      pend.set(id, fin);
+      w.postMessage({ id, ms });
+      setTimeout(fin, ms + 1500);   // 念のため: Worker から返事が無くても止まらない
+    });
+  };
+})();
 
 // 調べるときだけ、すべてのやり取りを開発者ツールのコンソールに出す（アドレスの最後に ?debug を付けて開く）。
 // 「すべてのやり取り」の表示はやめた（2026-11-15 ユーザーの希望）。ふだんは 0.25 秒ごとの記録の文字も作らない（2026-11-15 見直し。電池のため）
@@ -27,7 +51,7 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-17-22'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-18-26'; // 変えたら sw.js の CACHE も同じ名前に変える
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -125,7 +149,7 @@ class BleLink {
     if (p.writeWithoutResponse) this.modes.push({ resp: false, chunk: 0 }, { resp: false, chunk: 20 });
     if (p.write) this.modes.push({ resp: true, chunk: 0 }, { resp: true, chunk: 20 });
     if (!this.modes.length) this.modes.push({ resp: true, chunk: 0 }, { resp: true, chunk: 20 });
-    this.mode = 0;
+    this.mode = 0; this.fails = 0;
   }
   async writeWith(m, data) {
     const parts = [];
@@ -138,21 +162,28 @@ class BleLink {
     }
   }
   async write(bytes) {
+    if (!this.ch) throw new Error(t('errNoWrite'));   // まだつながっていない（open の途中）
     const data = new Uint8Array(bytes);
-    // うまく送れた方法を覚えて使い続ける。失敗したら次の方法を試す。
-    while (this.mode < this.modes.length) {
-      const m = this.modes[this.mode];
-      try {
-        await this.writeWith(m, data);
-        if (!this.reported) { this.reported = true; log(t('lgWriteOk', { how: `${t(m.resp ? 'lgResp' : 'lgNoResp')}, ${t(m.chunk ? 'lgChunk' : 'lgWhole')}` })); }
-        return;
-      } catch (e) {
-        log(t('lgWriteNg', { how: `${t(m.resp ? 'lgResp' : 'lgNoResp')}, ${t(m.chunk ? 'lgChunk' : 'lgWhole')}`, msg: e.message }));
-        if (!this.device.gatt.connected) throw e;
-        this.mode++;
-        await sleep(50);
+    const how = (m) => `${t(m.resp ? 'lgResp' : 'lgNoResp')}, ${t(m.chunk ? 'lgChunk' : 'lgWhole')}`;
+    // うまく送れた方法を覚えて使い続ける。失敗したら、まず同じ方法でもう 1 回、それでもだめなら次の方法を試す（2026-11-18 見直し）。
+    // 前は 1 回の失敗ですぐ次の方法へ移り、元に戻らなかった（一瞬の失敗でも遅い方法のまま。4 つとも失敗すると何も送れなくなった）。
+    for (let i = this.mode; i < this.modes.length; i++) {
+      const m = this.modes[i];
+      for (let a = 0; a < 2; a++) {
+        try {
+          await this.writeWith(m, data);
+          if (i !== this.mode || !this.reported) { this.mode = i; this.reported = true; log(t('lgWriteOk', { how: how(m) })); }
+          this.fails = 0;
+          return;
+        } catch (e) {
+          log(t('lgWriteNg', { how: how(m), msg: e.message }));
+          if (!this.device.gatt.connected) throw e;
+          await sleep(50);
+        }
       }
     }
+    // どの方法でも送れなかった。方法は変えずに（次は今の方法からまた試す）、3 回続いたら切れたものとして切る（画面に「切れました」と出す）
+    if (++this.fails >= 3) this.close();
     throw new Error(t('errNoWrite'));
   }
   close() { try { this.device && this.device.gatt.connected && this.device.gatt.disconnect(); } catch (e) { /* 無視 */ } }
@@ -231,6 +262,11 @@ class DemoLink {
 
 // ---- つなぐ・読む ----
 let link = null, pollTimer = null, granted = false, lastReply = 0;
+// つなぐたび・切るたびに 1 つ増やす番号（2026-11-18 見直し）。時間のかかる処理（バンドの記憶を読む など）は始めたときの番号を覚え、
+// 番号が変わっていたらそこで止める。前は「つながっているか」だけを見ていたので、読み込み中に切ってすぐつなぎ直すと、
+// 前の回の処理が新しい接続で続き、選んでいないバンドへ移ることがあった（デモで確認）。
+let connGen = 0;
+const alive = (g) => !!link && g === connGen;
 let curHz = 0;              // 今の周波数（分かっている最新）
 let locked = false;         // ダイヤルロック
 let step = 0;               // つまみの ステップ（Hz）。0 = まだ決めていない
@@ -249,7 +285,8 @@ const waiters = [];
 // まとめ読みで、帯が消えたときには全部の値がそろっているようにするため。返事が無くても、送り終えてから ms（1 秒）で次へ進む（止まらないように）。
 // 返事が送り終える前に届くこともあるので、待つ準備は送る前にする。
 // match を渡すと、その条件に合う返事を待つ（書き込みの返事 FB を待つときなど）。
-async function sendWait(bytes, note, ms = 1000, match = null) {
+// precise = true: 待ち時間を見えないタブでも正確な時計（preciseSleep）で測る（CW の文章で使う）
+async function sendWait(bytes, note, ms = 1000, match = null, precise = false) {
   const body = bytes.slice(4, -1);
   let w;
   const got = new Promise((resolve) => {
@@ -257,7 +294,8 @@ async function sendWait(bytes, note, ms = 1000, match = null) {
     waiters.push(w);
   });
   try { await send(bytes, note); } catch (e) { log(t('lgSendFail', { msg: e.message })); }
-  if (waiters.includes(w)) w.timer = setTimeout(() => { waiters.splice(waiters.indexOf(w), 1); w.resolve(null); }, ms);
+  const giveUp = () => { const i = waiters.indexOf(w); if (i >= 0) { waiters.splice(i, 1); w.resolve(null); } };
+  if (waiters.includes(w)) { if (precise) preciseSleep(ms).then(giveUp); else w.timer = setTimeout(giveUp, ms); }
   return got;
 }
 const parser = new FrameParser((f) => {
@@ -274,7 +312,10 @@ const parser = new FrameParser((f) => {
   if ((cmd === 0x03 || cmd === 0x00) && f.length >= 11) {
     lastReply = Date.now();
     if (Date.now() < quietUntil || pendingHz) return;   // こちらで回している最中は上書きしない
-    curHz = bcdToHz(f.slice(5, 10));
+    const hz = bcdToHz(f.slice(5, 10));
+    // 周波数が前と同じなら、表示を描き直さない（2026-11-18 見直し。0.25 秒ごとに周波数とバンドのボタンを全部書き直していた）
+    if (hz === curHz && step) return;
+    curHz = hz;
     if (vuBand() !== lastVu) { lastVu = vuBand(); showRx(); }   // 144/430 MHz 帯に入った・出たらプリアンプのボタンを直す
     showFreq(curHz);
     showBand();
@@ -329,7 +370,25 @@ const parser = new FrameParser((f) => {
 // 操作（つまみ・ボタン）を止め、いつもの読み出し（poll）も止める（まとめ読みを早く終わらせるため）。
 // total が分かっているとき（つないだ直後）は「8／15」のように進み具合も出す。
 const load = { depth: 0, done: 0, total: null };
+// ---- ほかのページ（ログソフト field-log など）に「少し待って」と伝える（2026-11-18 ユーザーの希望） ----
+// 同じパソコン・同じブラウザーで、同じアドレスのページだけに届く BroadcastChannel を使う（インターネットへは出ない）。
+// 1 つの IC-705 を 2 つのページで分け合うと、時間のかかる命令（バンドの記憶を読む・CW の文章）の返事が来なくなった
+// （2026-11-18 ユーザーの実機の記録「返事なし」）。その間だけ相手に読み出しを止めてもらう。送るのは合図だけで、周波数などは送らない。
+// 相手は「待って」から 8 秒たつと自分で再開するので、長いときは 3 秒ごとに「待って」を送り直す。デモのときは送らない。
+const holdCh = typeof BroadcastChannel === 'function' ? new BroadcastChannel('ic705-civ') : null;
+let holdOn = false, holdTimer = null;
+function updateHold() {
+  const want = !!holdCh && !!link && !(link instanceof DemoLink) && (load.depth > 0 || cwBusy);
+  if (want === holdOn) return;
+  holdOn = want;
+  holdTimer = null;   // 前の送り直しの繰り返しを止める
+  const say = (type) => { try { holdCh.postMessage({ type, ms: 8000 }); } catch (e) { /* 届かなくても動く */ } };
+  // 送り直しの時計も preciseSleep（見えないタブで長く放っておくと、ふつうの時計は 1 分に 1 回まで間引かれるため）
+  if (want) { say('hold'); const me = holdTimer = {}; (async () => { while (holdTimer === me) { await preciseSleep(3000); if (holdTimer === me) say('hold'); } })(); }
+  else if (holdCh) say('release');
+}
 function showLoading() {
+  updateHold();
   const on = load.depth > 0 && !!link;
   document.body.classList.toggle('loading', on);
   $('loading').hidden = !on;
@@ -340,10 +399,15 @@ function showLoading() {
   $('loadingBar').classList.toggle('busy', n == null);
 }
 async function withLoading(total, fn) {
+  const g = connGen;
   if (++load.depth === 1) { load.done = 0; load.total = total; }
   showLoading();
   try { return await fn(); }
-  finally { if (--load.depth === 0) load.total = null; showLoading(); }
+  finally {
+    // つなぎ直したあと（connect で 0 に戻したあと）に前の回の処理が終わっても、新しい回の数を減らさない
+    if (g === connGen && load.depth > 0 && --load.depth === 0) load.total = null;
+    showLoading();
+  }
 }
 
 // 送るのは 1 つずつ順番に（Bluetooth は同時に 2 つ書けないため）
@@ -375,9 +439,21 @@ async function handshake() {
 // さわると、勝手に戻ることがある」の対策）。前は 0.25 秒ごとに待たずに 4 つずつ積んでいたので、Bluetooth の書き込みが遅いと
 // 送る列がどんどん長くなり、ボタンで送った命令が古い読み出しの後ろに並んで、その古い返事で表示が戻っていた。
 let pollBusy = false;
+// 画面が見えない間（スマホの画面を消した・別のタブやアプリにした）は、10 秒に 1 回、周波数だけ読む（2026-11-18 ユーザーと決めた。
+// スマホと IC-705 の電池のため。完全には止めず、念のための合図にもする）。画面に戻ったら、すぐに全部を 1 回読み直す（下の visibilitychange）
+const HIDDEN_POLL_MS = 10000;
+let hiddenPolledAt = 0;
 async function poll() {
   // CW の文章を送っている間は読まない（2026-11-15 実機で単語が時々抜けた。やり取りを減らして本体のじゃまをしないため）
   if (!link || Date.now() < quietUntil || pendingHz || pollBusy || load.depth || cwBusy) return;
+  if (document.hidden) {
+    if (Date.now() - hiddenPolledAt < HIDDEN_POLL_MS) return;
+    hiddenPolledAt = Date.now();
+    pollBusy = true;
+    try { await send(civ(0x03)); } catch (e) { log(t('lgSendFail', { msg: e.message })); }
+    finally { pollBusy = false; }
+    return;
+  }
   pollBusy = true;
   pollCount++;
   try {
@@ -410,6 +486,17 @@ function pollLists() {
   if (shown('secRx')) slow.push(civ(0x16, 0x02), civ(0x16, 0x22), civ(0x16, 0x40), civ(0x16, 0x41), civ(0x16, 0x48));
   return { turn, slow };
 }
+// 画面に戻ったとき: 見えない間に本体で変えたかもしれないので、表示している項目を 1 回ずつ全部読む。
+// 帯（読み取り中）は出さず、返事も待たない（いつもの読み出しと同じく、返事が来たものから表示が変わる）
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !link || load.depth || cwBusy || pollBusy) return;
+  const g = connGen, { turn, slow } = pollLists();
+  pollBusy = true;
+  try {
+    for (const c of [civ(0x03), ...(shown('secDtx') ? [civ(0x21, 0x00)] : []), ...turn, ...slow]) { if (!alive(g)) return; await send(c); }
+  } catch (e) { log(t('lgSendFail', { msg: e.message })); }
+  finally { pollBusy = false; }
+});
 // つないだ直後に一度ずつ全部読む（2026-11-15。順に読むだけだと全部そろうまで 4 秒以上かかり、その間ボタンが効かなかった）
 async function readAllOnce() {
   const { turn, slow } = pollLists();
@@ -417,10 +504,11 @@ async function readAllOnce() {
   const first = (c) => c[4] === 0x04 || (c[4] === 0x16 && RX_KEY[c[5]]);
   const all = [...slow, ...turn];
   const head = all.filter(first).sort((x, y) => (y[4] === 0x04) - (x[4] === 0x04)), rest = all.filter((c) => !first(c));
+  const g = connGen;
   await withLoading(head.length + rest.length, async () => {
-    for (const c of head) { if (!link) return; await sendWait(c); }
-    await retryRx();                        // 受信で返事が来なかったものは、ここですぐ読み直す
-    for (const c of rest) { if (!link) return; await sendWait(c); }
+    for (const c of head) { if (!alive(g)) return; await sendWait(c); }
+    await retryRx(RX_ALL, g);               // 受信で返事が来なかったものは、ここですぐ読み直す
+    for (const c of rest) { if (!alive(g)) return; await sendWait(c); }
     // 全バンドの記憶の取り込み（preloadBands）は、つないだ直後にはしない: 実機では記憶 1 つを読むのに約 1 秒かかり、
     // 12 バンド × 3 つで 35 秒以上待つことになった（2026-11-15 ユーザーの記録）。バンドボタンを押したときに、そのバンドだけ読む。
   });
@@ -442,19 +530,20 @@ async function readRx(what) {
   const keys = what === 'mode' ? ['an', 'mn'] : RX_ALL;
   for (const k of keys) rx[k] = null;   // 分かるまでボタンを押せなくする（古い値から次を計算しないように）
   showRx();
+  const g = connGen;
   await withLoading(null, async () => {
-    for (const k of keys.filter(rxNeeded)) { if (!link) return; await sendWait(civ(0x16, RX_SUB[k])); }
-    await retryRx(keys);
+    for (const k of keys.filter(rxNeeded)) { if (!alive(g)) return; await sendWait(civ(0x16, RX_SUB[k])); }
+    await retryRx(keys, g);
   });
 }
 // 受信でまだ分からないもの（返事が来なかったもの）を、2 回まで読み直す。今のモードで使えないもの（CW の AN など）は待たない
-async function retryRx(keys = RX_ALL) {
+async function retryRx(keys = RX_ALL, g = connGen) {
   if (!shown('secRx')) return;
   for (let n = 0; n < 2; n++) {
     const miss = keys.filter((k) => rx[k] == null && rxNeeded(k));
-    if (!miss.length || !link) return;
+    if (!miss.length || !alive(g)) return;
     log(t('lgRxRetry', { v: miss.join(', ') }));
-    for (const k of miss) { if (!link) return; await sendWait(civ(0x16, RX_SUB[k])); }
+    for (const k of miss) { if (!alive(g)) return; await sendWait(civ(0x16, RX_SUB[k])); }
   }
 }
 
@@ -464,6 +553,7 @@ async function connect(kind) {
   // 前の回の後片付け（受け取り途中のかけらと、返事を待っている印。2026-11-15 見直し）
   parser.buf = [];
   for (const w of waiters.splice(0)) { clearTimeout(w.timer); w.resolve(null); }
+  const g = ++connGen;
   link = kind === 'demo' ? new DemoLink() : new BleLink();
   $('bandLog').textContent = ''; $('cwLog').textContent = '';
   blog(t('blVer', { v: APP_VER }));
@@ -471,12 +561,18 @@ async function connect(kind) {
   setButtons(true);
   try {
     status('stConnecting');
-    await link.open((b) => parser.push(b), onClosed);
+    const l = link;
+    await l.open((b) => parser.push(b), () => { if (link === l) onClosed(); });   // 前の回の「切れた」で新しい回を閉じない
+    if (!alive(g)) return;
     status('stHandshake');
     await handshake();
+    if (!alive(g)) return;
     if (shown('secDtx')) await startDtx();   // つないだら ΔTX を ON（ずらす量は 0 Hz から）。隠しているときは本体の RIT・ΔTX にさわらない
+    if (!alive(g)) return;
     await readAllOnce();
+    if (!alive(g)) return;
     await readCurStacks();                  // 今いるバンドの記憶 3 つだけ読んで、すぐ出す（約 3 秒）
+    if (!alive(g)) return;                  // 途中で切った・つなぎ直したときは、読み出しの時計を作らない（2 つ動かないように）
     status('stConnected');
     const startedAt = Date.now();
     pollTimer = setInterval(() => {
@@ -487,6 +583,7 @@ async function connect(kind) {
     }, POLL_MS);
     poll();
   } catch (e) {
+    if (!alive(g)) return;                  // 前の回のエラーで、新しい回を切らない
     if (e && e.name === 'NotFoundError') status('stNotChosen');
     else status('stFailed', { msg: e.message });
     log($('status').textContent);
@@ -496,23 +593,28 @@ async function connect(kind) {
 
 function onClosed() {
   clearInterval(pollTimer); pollTimer = null;
-  link = null;
+  link = null; connGen++; cwLockJob = 0;   // 急に切れたときは、本体のロックは外せない（つなぎ直して本体かページで外す）
   setButtons(false);
   status('stClosed');
   log(t('lgClosed'));
 }
 function disconnect() {
   if (!link) { setButtons(false); return; }
-  const l = link, stopCw = cwBusy;
+  const l = link, stopCw = cwBusy, unlock = !!cwLockJob;
+  cwLockJob = 0;
   clearInterval(pollTimer); pollTimer = null;
-  link = null;
+  link = null; connGen++;
   setButtons(false);
-  if (!stopCw) { l.close(); return; }
+  if (!stopCw && !unlock) { l.close(); return; }
   // モールス文を送っている途中なら、先に本体へ「止めて」（17 FF）を送ってから切る（2026-11-15 見直し。
-  // 送らずに切ると、本体はためた分を送り終わるまで電波を出し続ける）。前の書き込みが終わるのを待ち、0.8 秒で切る
-  clog(t('cwStopped'));
-  const stop = sendChain.then(() => l.write(civ(0x17, 0xFF)));
-  Promise.race([stop, sleep(800)]).catch(() => {}).finally(() => l.close());
+  // 送らずに切ると、本体はためた分を送り終わるまで電波を出し続ける）。送るときにかけたロックも外す（2026-11-18。
+  // 外さずに切ると、本体のダイヤルがロックされたままになる）。前の書き込みが終わるのを待ち、1 秒で切る
+  if (stopCw) clog(t('cwStopped'));
+  const stop = sendChain.then(async () => {
+    if (stopCw) await l.write(civ(0x17, 0xFF));
+    if (unlock) await l.write(civ(0x16, 0x50, 0x00));
+  });
+  Promise.race([stop, sleep(1000)]).catch(() => {}).finally(() => l.close());
 }
 function setButtons(connected) {
   $('connect').disabled = connected;
@@ -664,6 +766,9 @@ class Knob {
       this.turn(e.deltaY < 0 ? 10 : -10);
     }, { passive: false });
     new ResizeObserver(() => this.draw()).observe(canvas);
+    // 色は 1 回だけ読んで覚える（2026-11-18 見直し。前は回すたびに画面の色の設定を調べ直していた）。明るい・暗い表示が切り替わったら読み直す
+    this.colors = null;
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { this.colors = null; this.draw(); });
   }
   setEnabled(v) { this.enabled = v; if (!v) this.drag = null; this.draw(); }
   pointAngle(e) {
@@ -704,8 +809,11 @@ class Knob {
     const px = Math.round(size * dpr);
     if (c.width !== px || c.height !== px) { c.width = px; c.height = px; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const css = getComputedStyle(document.documentElement);
-    const col = (n) => css.getPropertyValue(n).trim();
+    if (!this.colors) {
+      const css = getComputedStyle(document.documentElement);
+      this.colors = Object.fromEntries(['--knob', '--line', '--knob-tick', '--knob-dimple'].map((n) => [n, css.getPropertyValue(n).trim()]));
+    }
+    const col = (n) => this.colors[n];
     const r = size / 2;
     ctx.clearRect(0, 0, size, size);
     ctx.globalAlpha = this.enabled ? 1 : 0.4;
@@ -940,6 +1048,9 @@ function cwChunks(s) {
   return out.map((p, i) => (i < out.length - 1 ? p + ' ' : p));
 }
 const CW_LEAD = 1500;   // 送り終わる予定のこのミリ秒前に、次の単語を本体へ送っておく
+// タブが見えないときは、もっと早めに渡しておく（2026-11-18。時計が少し遅れても本体の手が空かないように）
+const CW_LEAD_HIDDEN = 3000;
+const cwLead = () => (document.hidden ? CW_LEAD_HIDDEN : CW_LEAD);
 // 送るのにかかる時間（ミリ秒）。1 単位 = 1200 / WPM ミリ秒。短点 1・長点 3・符号の間 1・文字の間 3・単語の間 7
 function cwMs(s) {
   let units = 0, join = 0;
@@ -963,30 +1074,57 @@ async function cwSendText(text) {
   const job = ++cwJob;
   cwBusy = true; showCwMsg();
   try {
+    // 送っている間だけ本体のダイヤルをロックする（2026-11-18 ユーザーの希望。本体のダイヤルはゆるく、少し当たっただけで周波数がずれるため）。
+    // まずロック → 周波数を読んで表示 → 文章を送る。終わったら・中止したら、このページがかけたロックだけを外す（もともとロックしていたときはさわらない）
+    if (cwLockJob) cwLockJob = job;          // 前の文章でかけたロックを、そのまま引き継ぐ
+    else if (!locked) {
+      cwLockJob = job;
+      setLocked(true);
+      await send(civ(0x16, 0x50, 0x01), t('nLock'));
+      clog(t('clLock'));
+    }
+    if (job !== cwJob || !link) return;
+    await sendWait(civ(0x03), null, 1000, (f) => f[4] === 0x03, true);   // ロックしたあとの周波数を読んで表示する
+    if (job !== cwJob || !link) return;
     let end = Date.now();   // 本体にためた分を送り終わる予定の時刻
     cwSay('cwSending', s);
     clog(t('clText', { v: s, w: cw.wpm || '?' }));
+    // 時計はどれも preciseSleep（見えないタブでも間引かれにくい）を使う（2026-11-18）
     for (const p of cwChunks(s)) {
-      while (end - Date.now() > CW_LEAD) { if (job !== cwJob || !link) return; await sleep(50); }
+      while (end - Date.now() > cwLead()) { if (job !== cwJob || !link) return; await preciseSleep(50); }
       // 本体が「できません」（FA）と返したら、0.5 秒あけて 3 回まで送り直す（ためる場所がいっぱいのときに備えて）
-      let r = null;
+      let r = null, t0 = Date.now();
       for (let n = 0; n < 4; n++) {
         if (job !== cwJob || !link) return;
-        const t0 = Date.now();
-        r = await sendWait(civ(0x17, ...ascii(p)), t('nCwMsg', { v: p.trim() }), 1000, (x) => x[4] === 0xFB || x[4] === 0xFA);
+        t0 = Date.now();
+        // 返事（受け取りました FB／できません FA）は、次の単語を送る時刻まで（0.15〜1 秒）しか待たない（2026-11-18。
+        // 前は 1 秒待っていたので、返事が来ないと本体が前の単語を送り終えて手が空き、単語の間が空いた）
+        const wait = Math.max(150, Math.min(1000, Math.max(end, t0) + cwMs(p) - cwLead() - t0));
+        r = await sendWait(civ(0x17, ...ascii(p)), t('nCwMsg', { v: p.trim() }), wait, (x) => x[4] === 0xFB || x[4] === 0xFA, true);
         const left = Math.round((end - Date.now()) / 100) / 10;
         clog(t('clWord', { v: p.trim(), r: r ? (r[4] === 0xFB ? 'OK' : t('clNg')) : t('blNone'), ms: Date.now() - t0, left: Math.max(0, left) }));
         if (!r || r[4] !== 0xFA) break;
-        await sleep(500);
+        await preciseSleep(500);
       }
       if (r && r[4] === 0xFA) { if (job === cwJob) cwSay('cwNg'); return; }
-      end = Math.max(end, Date.now()) + cwMs(p);
+      end = Math.max(end, t0) + cwMs(p);   // 送った時刻から数える（返事を待った分は数えない）
     }
-    while (Date.now() < end) { if (job !== cwJob || !link) return; await sleep(100); }
+    while (Date.now() < end) { if (job !== cwJob || !link) return; await preciseSleep(100); }
     clog(t('clEnd'));
     if (job === cwJob) cwSay(cw.bk === 0 ? 'cwDoneBkOff' : 'cwDone');
   } catch (e) { log(t('lgSendFail', { msg: e.message })); }
-  finally { if (job === cwJob) { cwBusy = false; showCwMsg(); } }
+  finally {
+    if (job === cwJob) { cwBusy = false; showCwMsg(); }
+    // このページがかけたロックを外す（次の文章が引き継いでいれば外さない。切ったときは disconnect で外す）
+    if (cwLockJob === job) { cwLockJob = 0; if (link) cwUnlock(); }
+  }
+}
+let cwLockJob = 0;   // 送るときにこのページがかけたロックの持ち主（文章の番号）。0 = かけていない
+function cwUnlock() {
+  setLocked(false);
+  clog(t('clUnlock'));
+  send(civ(0x16, 0x50, 0x00), t('nUnlock')).catch((e) => log(t('lgSendFail', { msg: e.message })));
+  setTimeout(() => { if (link) send(civ(0x16, 0x50)).catch(() => {}); }, 300);   // 本当に外れたか読み直す
 }
 async function cwStop(quiet) {
   cwJob++; cwBusy = false; showCwMsg();
@@ -1001,6 +1139,7 @@ function loadCwPresets() {
 }
 var cwPresets = loadCwPresets();
 function showCwMsg() {
+  updateHold();   // CW の文章を送っている間は、ほかのページに待ってもらう
   const on = !!link, ok = on && cwCanSend() && !cwBusy;
   // 送っている間は「止める」（と切る・言語など本体へ送らないもの）以外を押せなくする（2026-11-15 ユーザーの希望。
   // 送っている間に読みに行くのを止めたら単語が抜けなくなったので、ページのボタンで本体へ送る命令も止める）
@@ -1181,6 +1320,7 @@ async function sendFilter(n) {
 // 送った後はモード・フィルター（04）と帯域幅（1A 03）を読み直す。
 async function sendMode(mode) { return withLoading(null, () => sendModeInner(mode)); }
 async function sendModeInner(mode) {
+  const g = connGen;
   fil.mode = mode; fil.fil = null; fil.idx = null; fil.modeSentAt = Date.now();
   rememberBand();
   showFilter();
@@ -1188,6 +1328,7 @@ async function sendModeInner(mode) {
   try {
     await send(civ(0x06, mode), t('nMode', { v: MODE_NAMES[mode] }));
     await sleep(200);                       // 先に並んでいた古い読み値の返事をやり過ごす
+    if (!alive(g)) return;
     fil.modeSentAt = 0;                     // 本体の返事（04）でフィルターを合わせる
     await send(civ(0x04));
     if (widthMax(mode) != null) await send(civ(0x1A, 0x03));
@@ -1377,9 +1518,9 @@ let stackFail = 'blNone';   // 読めなかった理由（blNone = 返事が無�
 const POS = ['posL', 'posC', 'posR'];
 let stacks = {};            // バンド番号 → 記憶 3 つ（{ hz, mode, filter, data }。読めない・バンドの外は null）。つないでいる間だけ覚える
 // 記憶を 1 つ読む。読めなければ null。送り終えてから STACK_WAIT 待ち、返事が無ければ 1 回だけ読み直す
-async function readBandStack(b, note, reg) {
+async function readBandStack(b, note, reg, g = connGen) {
   stackFail = 'blNone';
-  for (let n = 0; n < 2 && link; n++) {
+  for (let n = 0; n < 2 && alive(g); n++) {
     const f = await sendWait(civ(0x1A, 0x01, b.code, reg), note, STACK_WAIT);
     if (f && f[4] === 0x1A && f.length >= 17) return f;
     // 「できません」（FA）は、前に送った別の命令への遅れた返事のこともあるので、すぐあきらめずに 1 回読み直す（2026-11-15 見直し）
@@ -1397,19 +1538,19 @@ function saveSnap(code, list, last) {
   try { localStorage.setItem('ic705bt.stacks', JSON.stringify(all)); } catch (e) { /* 覚えられなくても動く */ }
 }
 // そのバンドの記憶を 3 つ読んで stacks に入れる。戻り値は、最初に移る番号（0〜2）と理由。1 つも読めなければ null
-async function loadStacks(b) {
+async function loadStacks(b, g = connGen) {
   const list = [];
   let fail = '';
   for (let reg = 1; reg <= 3; reg++) {
-    if (!link) return null;
-    const f = await readBandStack(b, t('nBandRead', { v: b.name, p: t(POS[reg - 1]) }), reg);
+    if (!alive(g)) return null;
+    const f = await readBandStack(b, t('nBandRead', { v: b.name, p: t(POS[reg - 1]) }), reg, g);
     const hz = f ? bcdToHz(f.slice(8, 13)) : 0;
     if (!f) fail = t(stackFail);
     list.push(f && hz >= b.lo && hz <= b.hi ? { hz, mode: f[13], filter: f[14], data: f[15], raw: f.slice(8, f.length - 1) } : null);
   }
   const cell = (e) => (e ? fmtMHz(e.hz) : '-');
   blog(t('blRead', { v: b.name, a: cell(list[0]), b: cell(list[1]), c: cell(list[2]) }) + (fail ? ` (${fail})` : ''));
-  if (!list.some(Boolean)) return null;
+  if (!alive(g) || !list.some(Boolean)) return null;   // つなぎ直したあとなら、新しい回の記憶に入れない
   stacks[b.code] = list;
   const snap = loadSnap()[b.code];
   let pick = -1, why = 'whyFirst';
@@ -1426,10 +1567,10 @@ async function loadStacks(b) {
 // ページが覚える「使用中の記憶」（バンド番号 → 0〜2）。本体の使用中の印は CI-V で読めず動かせない（実験 A・B）ので、
 // ページが自分で覚え、出ていく前に今の周波数・モードをそこへ書く（本体のバンドキーと同じ動き。2026-11-15 ユーザーと決めた）
 let inUse = {};
-async function writeInUse(b) {
+async function writeInUse(b, g = connGen) {
   const list = b && stacks[b.code], i = b ? inUse[b.code] : null;
   const e = list && i != null ? list[i] : null;
-  if (!e || !e.raw || !curHz || curHz < b.lo || curHz > b.hi) return;
+  if (!alive(g) || !e || !e.raw || !curHz || curHz < b.lo || curHz > b.hi) return;
   const mode = fil.mode != null ? fil.mode : e.mode, filter = fil.fil != null ? fil.fil : e.filter;
   if (e.hz === curHz && e.mode === mode && e.filter === filter) return;   // 変わっていなければ書かない
   const body = e.raw.slice();
@@ -1440,8 +1581,8 @@ async function writeInUse(b) {
   // 実機では書けているのに「書きました」の返事が届かないことがある（2026-11-15 実機: 返事なしでも中央が書き換わっていた）。
   // 返事が無いときは読み直して、周波数が入っていれば書けたとみなす
   let ok = !!r && r[4] === 0xFB;
-  if (!r && link) {
-    const f = await readBandStack(b, t('nBandRead', { v: b.name, p: t(POS[i]) }), i + 1);
+  if (!r && alive(g)) {
+    const f = await readBandStack(b, t('nBandRead', { v: b.name, p: t(POS[i]) }), i + 1, g);
     ok = !!f && bcdToHz(f.slice(8, 13)) === hz;
   }
   if (ok) {
@@ -1466,6 +1607,7 @@ function radioBandChanged(prev, bc) {
 }
 async function selectBand(code) {
   if (!link || locked || load.depth) return;
+  const g = connGen;
   const b = BANDS.find((x) => x.code === code);
   rememberBand();                           // 出ていくバンドの今の周波数を覚える
   const cur = curBand();
@@ -1473,8 +1615,8 @@ async function selectBand(code) {
     try {
       const note = t('nBand', { v: b.name });
       const say = (hz, why) => blog(t('blMove', { v: b.name, f: fmtMHz(hz), why }));
-      if (cur !== b) await writeInUse(cur);   // 出ていくバンドの使用中の記憶へしまう
-      if (!link) return;
+      if (cur !== b) await writeInUse(cur, g);   // 出ていくバンドの使用中の記憶へしまう
+      if (!alive(g)) return;
       const st = stacks[code], k = inUse[code];
       // 記憶を読んであるバンドは、ページが覚えている使用中の記憶へ移る（読まないので速い）
       if (cur !== b && st && k != null && st[k]) { const e = st[k]; say(e.hz, t('whyInUse', { p: t(POS[k]) })); await moveTo(e.hz, e.mode, e.filter, e.data, note); return; }
@@ -1484,8 +1626,8 @@ async function selectBand(code) {
       // 記憶は読んであるが使用中が分からないバンドは、読み直さずに最後の周波数へ（速い）
       if (cur !== b && st && m) { say(m.hz, t('whySeen')); await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return; }
       const prevUse = inUse[code];
-      const r = await loadStacks(b);
-      if (!link) return;
+      const r = await loadStacks(b, g);
+      if (!alive(g)) return;
       // つないでいる間に使ったバンドは、ページが覚えている最後の周波数へ戻る。その周波数と同じ記憶があれば、それを使用中にする
       // （本体のキーで出たなら、本体はそこへしまっている）。無ければ使用中は分からないので、どこにも書かない
       if (m && cur !== b) {
@@ -1514,15 +1656,16 @@ async function selectBand(code) {
 // 前はバンドボタンを押すまで出なかった）。今の周波数と同じ記憶があればそれを使用中にする（無ければ分からないので書かない）
 async function readCurStacks() {
   if (!link || !shown('secBand')) return;
+  const g = connGen;
   // 周波数がまだ分からなければ読む（実機では、前の命令の遅れた返事などで 1 回では分からないことがあった。2026-11-15）。
   // 周波数の返事（03）だけを待ち、3 回まで読み直す
-  for (let n = 0; n < 3 && !curHz && link; n++) await sendWait(civ(0x03), null, 1500, (f) => f[4] === 0x03);
+  for (let n = 0; n < 3 && !curHz && alive(g); n++) await sendWait(civ(0x03), null, 1500, (f) => f[4] === 0x03);
   const b = curBand();
   if (!b) blog(t('blNoBand', { f: curHz ? fmtMHz(curHz) : '?' }));
-  if (!b || !link) return;
+  if (!b || !alive(g)) return;
   await withLoading(null, async () => {
-    const r = await loadStacks(b);
-    if (!link) return;
+    const r = await loadStacks(b, g);
+    if (!alive(g)) return;
     const i = r ? stacks[b.code].findIndex((e) => e && e.hz === curHz) : -1;
     if (i >= 0) { inUse[b.code] = i; saveSnap(b.code, stacks[b.code], i); } else delete inUse[b.code];
     showBand();
@@ -1533,9 +1676,10 @@ async function selectStack(i) {
   const b = curBand();
   const e = b && stacks[b.code] && stacks[b.code][i];
   if (!link || locked || load.depth || !e) return;
+  const g = connGen;
   await withLoading(null, async () => {
-    if (inUse[b.code] !== i) await writeInUse(b);   // 別の記憶を選ぶ前に、今の使用中の記憶へしまう（本体と同じ）
-    if (!link || !stacks[b.code]) return;
+    if (inUse[b.code] !== i) await writeInUse(b, g);   // 別の記憶を選ぶ前に、今の使用中の記憶へしまう（本体と同じ）
+    if (!alive(g) || !stacks[b.code]) return;
     inUse[b.code] = i;
     saveSnap(b.code, stacks[b.code], i);
     blog(t('blMove', { v: b.name, f: fmtMHz(e.hz), why: t('whyPick', { p: t(POS[i]) }) }));
