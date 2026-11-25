@@ -51,7 +51,7 @@ function log(msg) {
 }
 // バンドの記憶だけの記録（2026-11-15）。いつもの記録は読み出しですぐ流れて消えるので、バンドの記憶の読み書きと
 // バンドボタンで移った先・その理由だけを別に残す（古い順。つなぐたびに消す）。APP_VER は、古い版が開かれていないか見分けるため。
-const APP_VER = '2026-11-24-27'; // 変えたら sw.js の CACHE も同じ名前に変える
+const APP_VER = '2026-11-25-28'; // 変えたら sw.js の CACHE も同じ名前に変える
 function blog(msg) {
   log(msg);
   const el = $('bandLog');
@@ -549,7 +549,7 @@ async function retryRx(keys = RX_ALL, g = connGen) {
 
 async function connect(kind) {
   if (link) return;
-  granted = false; lastReply = 0; pollBusy = false; load.depth = 0; curHz = 0; step = 0; pendingHz = 0; pollCount = 0; radioTs = null; dtxOn = null; ritOn = null; cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); bandMem = {}; stacks = {}; inUse = {}; lastBandCode = 0;
+  granted = false; lastReply = 0; pollBusy = false; load.depth = 0; curHz = 0; step = 0; pendingHz = 0; pollCount = 0; radioTs = null; dtxOn = null; ritOn = null; cw.wpm = cw.pct = cw.bk = cw.key = null; resetPower(); fil.mode = fil.fil = fil.idx = null; resetRx(); bandMem = {}; stacks = {}; inUse = {}; guessUse = {}; lastBandCode = 0;
   // 前の回の後片付け（受け取り途中のかけらと、返事を待っている印。2026-11-15 見直し）
   parser.buf = [];
   for (const w of waiters.splice(0)) { clearTimeout(w.timer); w.resolve(null); }
@@ -1477,6 +1477,7 @@ function showBand() {
   // 前は「今の周波数と同じ記憶」に枠を付けていたので、同じ周波数の記憶が 2 つあると枠が 2 つ、ダイヤルを回すと枠が消えた
   // （2026-11-16 ユーザー報告「7 MHz で枠なし、144 MHz で 2 つ」）。IC-9700 の水色の枠と同じ意味にした。使用中が分からないときは枠なし
   const use = cb ? inUse[cb.code] : null;
+  const guess = cb && use == null ? guessUse[cb.code] : null;   // 使用中が分からないときだけ、点線の枠（たぶん使用中）
   const list = cb ? stacks[cb.code] : null;
   $('stackBox').hidden = !list;
   document.querySelectorAll('#stack button').forEach((btn, i) => {
@@ -1485,6 +1486,8 @@ function showBand() {
     btn.querySelector('.fnname').textContent = e ? (MODE_NAMES[e.mode] || '--') : '--';   // 左・中央・右の文字は出さない（2026-11-15 ユーザーの希望）
     btn.querySelector('.fnval').textContent = e ? fmtMHz(e.hz) : '--';
     btn.classList.toggle('on', !!e && use === i);
+    btn.classList.toggle('guess', !!e && guess === i);
+    btn.title = e && guess === i ? t('stackGuess') : '';
   });
 }
 async function moveTo(hz, mode, filter, data, note) {
@@ -1567,6 +1570,20 @@ async function loadStacks(b, g = connGen) {
 // ページが覚える「使用中の記憶」（バンド番号 → 0〜2）。本体の使用中の印は CI-V で読めず動かせない（実験 A・B）ので、
 // ページが自分で覚え、出ていく前に今の周波数・モードをそこへ書く（本体のバンドキーと同じ動き。2026-11-15 ユーザーと決めた）
 let inUse = {};
+// 使用中が分からないときの「たぶん使用中」（バンド番号 → 0〜2）。点線の枠を出すだけで、本体の記憶は書きかえない（writeInUse は inUse しか使わない）。
+// 2026-11-25 ユーザーの希望: 接続したときにいたバンド（いつも 7 MHz）は、ダイヤルを回したあとだと今の周波数と同じ記憶が無く、枠が出なかった。
+// 分からなくなったその時の周波数にいちばん近い記憶（同じモードを優先）にする。ダイヤルを回しても動かさない（本体の使用中の組は回しても変わらないため）
+let guessUse = {};
+function setGuess(code, hz = curHz, mode = fil.mode) {
+  const list = stacks[code];
+  let best = Infinity, g = -1;
+  if (list && hz) list.forEach((e, i) => {
+    if (!e) return;
+    const d = Math.abs(e.hz - hz) + (mode != null && e.mode !== mode ? 1e10 : 0);
+    if (d < best) { best = d; g = i; }
+  });
+  if (g >= 0) guessUse[code] = g; else delete guessUse[code];
+}
 async function writeInUse(b, g = connGen) {
   const list = b && stacks[b.code], i = b ? inUse[b.code] : null;
   const e = list && i != null ? list[i] : null;
@@ -1632,7 +1649,7 @@ async function selectBand(code) {
       // （本体のキーで出たなら、本体はそこへしまっている）。無ければ使用中は分からないので、どこにも書かない
       if (m && cur !== b) {
         const i = r ? stacks[code].findIndex((e) => e && e.hz === m.hz) : -1;
-        if (i >= 0) { inUse[code] = i; saveSnap(code, stacks[code], i); } else delete inUse[code];
+        if (i >= 0) { inUse[code] = i; saveSnap(code, stacks[code], i); } else { delete inUse[code]; setGuess(code, m.hz, m.mode); }
         say(m.hz, t('whySeen')); await moveTo(m.hz, m.mode, m.filter, m.data || 0x00, note); return;
       }
       // 今いるバンドのボタンは、記憶を読み直して下に並べるだけ（移らない）
@@ -1640,7 +1657,7 @@ async function selectBand(code) {
         const i = r ? stacks[code].findIndex((e) => e && e.hz === curHz) : -1;
         // 今の周波数と同じ記憶があれば、それを使用中にする。無ければ使用中は分からないので、どこにも書かない（記憶をつぶさないため）
         // （前からページが使用中を覚えていれば、それをそのまま使う）
-        if (i >= 0) { saveSnap(code, stacks[code], i); inUse[code] = i; } else if (prevUse != null) inUse[code] = prevUse; else delete inUse[code];
+        if (i >= 0) { saveSnap(code, stacks[code], i); inUse[code] = i; } else if (prevUse != null) inUse[code] = prevUse; else { delete inUse[code]; setGuess(code); }
         showBand();
         return;
       }
@@ -1667,7 +1684,7 @@ async function readCurStacks() {
     const r = await loadStacks(b, g);
     if (!alive(g)) return;
     const i = r ? stacks[b.code].findIndex((e) => e && e.hz === curHz) : -1;
-    if (i >= 0) { inUse[b.code] = i; saveSnap(b.code, stacks[b.code], i); } else delete inUse[b.code];
+    if (i >= 0) { inUse[b.code] = i; saveSnap(b.code, stacks[b.code], i); } else { delete inUse[b.code]; setGuess(b.code); }
     showBand();
   });
 }

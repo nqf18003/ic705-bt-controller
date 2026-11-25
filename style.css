@@ -1,20 +1,20 @@
 :root { --bg: #f6f7f9; --fg: #1b1f24; --sub: #5b6470; --card: #fff; --line: #d5dae0; --accent: #0b6bcb; --warn: #c62828;
-        --knob: #e3e7ec; --knob-tick: #9aa3ad; --knob-dimple: #c3cad3; }
+        --knob: #e3e7ec; --knob-tick: #9aa3ad; --knob-dimple: #c3cad3; --fg2: #3a424c; }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #15181c; --fg: #e8ebef; --sub: #9aa3ad; --card: #1f242a; --line: #353c45; --accent: #4ea1f5; --warn: #e05252;
-          --knob: #2c333b; --knob-tick: #5b6470; --knob-dimple: #1a1e23; }
+          --knob: #2c333b; --knob-tick: #5b6470; --knob-dimple: #1a1e23; --fg2: #c3cad2; }
 }
 * { box-sizing: border-box; }
 a { color: var(--accent); }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, sans-serif; }
 main { max-width: 560px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; }
 /* せまい画面（スマホ）: 2 列用の枠（.cols・.col）を無いものとして 1 列に並べる。
-   順番は前と同じ: … バンド → RIT・ΔTX → CW → 送信パワー → モード・フィルター → 受信 → つなぐボタン … */
+   順番は前と同じ: … バンド → RIT・ΔTX → CW → 送信出力 → モード・フィルター → 受信 → 接続ボタン … */
 .cols, .col { display: contents; }
 #secFil { order: 1; }
 #secRx { order: 2; }
 .buttons, .status, main > details { order: 3; }
-/* 広い画面（パソコン・タブレットの横向き）: 2 列。左 = 周波数・つまみ・バンド・モード、右 = RIT・ΔTX・CW・送信パワー・受信 */
+/* 広い画面（パソコン・タブレットの横向き）: 2 列。左 = 周波数・つまみ・バンド・モード、右 = RIT・ΔTX・CW・送信出力・受信 */
 /* 2 列にするかは app.js が body に cols2 を付けて決める（右上のボタンで選んだほう。選んでいなければ幅 900 px 以上で 2 列） */
 body.cols2 main { max-width: 1140px; }
 body.cols2 .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 clamp(8px, 2vw, 24px); align-items: start; }
@@ -49,6 +49,9 @@ input[type=range]:disabled::-webkit-slider-thumb { background: var(--sub); }
 .knob { flex: 1 1 60%; width: 60%; aspect-ratio: 1; max-width: 300px; touch-action: none; cursor: grab; }
 .side { flex: 1 1 40%; display: flex; flex-direction: column; gap: 8px; }
 .label { color: var(--sub); font-size: .85rem; }
+/* 文字は 3 段（2026-11-25 ユーザーの希望。前は欄の見出しが灰色で小さく、下の項目名より弱く見えた）:
+   1 欄の見出し .sechead（白・太字・左に青い線）、2 項目名 .rowname（少し落ち着いた色）、3 補足 .label・.note・目盛り（灰色の小さい字） */
+.sechead { color: var(--fg); font-size: 1.05rem; font-weight: 700; padding-left: 8px; border-left: 3px solid var(--accent); line-height: 1.3; }
 .steps { display: grid; grid-template-columns: 1fr; gap: 6px; }
 .steps button { padding: 10px 4px; font-size: .95rem; }
 .steps button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -79,7 +82,7 @@ summary { cursor: pointer; }
 .note { color: var(--sub); font-size: .85rem; margin: 6px 0; }
 pre { font-size: .75rem; max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
 .row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; }
-.rowname { font-size: .95rem; }
+.rowname { font-size: .95rem; color: var(--fg2); }
 .rowvalue { font-family: ui-monospace, Consolas, monospace; font-size: 1.3rem; font-weight: 700; }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
 .seg button { padding: 10px 4px; font-size: .95rem; }
@@ -111,6 +114,8 @@ pre { font-size: .75rem; max-height: 240px; overflow: auto; white-space: pre-wra
 .fnval { font-size: .95rem; font-weight: 700; }
 .fn.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .fn.on .fnval { color: var(--accent); }
+/* 使用中が分からないときの「たぶん使用中」（推測）: 点線の枠だけ。本体の記憶は書きかえない（2026-11-25） */
+.fn.guess { border: 2px dashed var(--accent); }
 /* バンドの記憶 3 つ（左・中央・右）を選ぶボタン */
 .fngrid.three { grid-template-columns: repeat(3, 1fr); margin-top: 6px; }
 .stacklabel { margin-top: 10px; }

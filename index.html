@@ -37,7 +37,7 @@
   <div class="tune">
     <canvas id="knob" class="knob" data-i18n-aria="knob"></canvas>
     <div class="side">
-      <div class="label" data-i18n="stepLabel"></div>
+      <div class="rowname" data-i18n="stepLabel"></div>
       <div id="steps" class="steps">
         <button id="stepFine">1 Hz</button>
         <button id="stepTs">100 Hz（▼）</button>
@@ -50,7 +50,7 @@
   </div>
 
   <section class="dtx" id="secBand">
-    <div class="label" data-i18n="bandTitle"></div>
+    <div class="label sechead" data-i18n="bandTitle"></div>
     <div id="bands" class="bandgrid">
       <button data-code="1" disabled>1.9</button>
       <button data-code="2" disabled>3.5</button>
@@ -67,7 +67,7 @@
     </div>
     <!-- 今いるバンドの本体の記憶 3 つ（バンドボタンを押して読んだあとに出る） -->
     <div id="stackBox" hidden>
-      <div class="label stacklabel" data-i18n="stackTitle"></div>
+      <div class="rowname stacklabel" data-i18n="stackTitle"></div>
       <div id="stack" class="fngrid three">
         <button class="fn" disabled><span class="fnname"></span><span class="fnval">--</span></button>
         <button class="fn" disabled><span class="fnname"></span><span class="fnval">--</span></button>
@@ -78,7 +78,7 @@
 
   <section class="dtx" id="secFil">
     <div class="row">
-      <span class="label" data-i18n="filTitle"></span>
+      <span class="label sechead" data-i18n="filTitle"></span>
     </div>
     <div id="modes" class="modegrid">
       <button data-mode="0" disabled>LSB</button>
@@ -105,7 +105,7 @@
 
   <!-- 受信はモード・フィルターの下（2026-11-15 ユーザーの希望） -->
   <section class="dtx" id="secRx">
-    <div class="label" data-i18n="rxTitle"></div>
+    <div class="label sechead" data-i18n="rxTitle"></div>
     <!-- 本体の FUNCTION 画面のような四角いボタン。押すたびに切り替わる（本体と同じ） -->
     <div class="fngrid">
       <button id="fnPamp" class="fn" disabled><span class="fnname">P.AMP</span><span id="fnPampVal" class="fnval">--</span></button>
@@ -119,7 +119,7 @@
   <div class="col">
   <section class="dtx" id="secDtx">
     <div class="dtxhead">
-      <span class="label" data-i18n="dtxTitle"></span>
+      <span class="label sechead" data-i18n="dtxTitle"></span>
       <span id="dtxState" class="dtxstate"></span>
     </div>
     <div id="shiftMode" class="seg">
@@ -133,7 +133,7 @@
   </section>
 
   <section class="dtx" id="secCw">
-    <div class="label" data-i18n="cwTitle"></div>
+    <div class="label sechead" data-i18n="cwTitle"></div>
     <div class="row">
       <span class="rowname" data-i18n="wpm"></span>
       <span id="wpmValue" class="rowvalue">-- WPM</span>
@@ -181,7 +181,7 @@
   </section>
 
   <section class="dtx" id="secPwr">
-    <div class="label" data-i18n="pwrTitle"></div>
+    <div class="label sechead" data-i18n="pwrTitle"></div>
     <div class="row">
       <span class="rowname" data-i18n="pwrSet"></span>
       <span id="pwrValue" class="rowvalue">-- %</span>
